@@ -1,0 +1,79 @@
+{
+ "actions": [],
+ "autoname": "field:hotel_name",
+ "creation": "2026-02-25 10:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "hotel_name",
+  "address_section",
+  "address",
+  "contact_section",
+  "phone",
+  "email"
+ ],
+ "fields": [
+  {
+   "bold": 1,
+   "fieldname": "hotel_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Hotel Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "address_section",
+   "fieldtype": "Section Break",
+   "label": "Address"
+  },
+  {
+   "fieldname": "address",
+   "fieldtype": "Text",
+   "label": "Address"
+  },
+  {
+   "fieldname": "contact_section",
+   "fieldtype": "Section Break",
+   "label": "Contact"
+  },
+  {
+   "fieldname": "phone",
+   "fieldtype": "Data",
+   "label": "Phone",
+   "options": "Phone"
+  },
+  {
+   "fieldname": "email",
+   "fieldtype": "Data",
+   "label": "Email",
+   "options": "Email"
+  }
+ ],
+ "links": [],
+ "modified": "2026-02-25 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Book My Room",
+ "name": "Hotel",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
