@@ -3,13 +3,31 @@
 
 frappe.ui.form.on("Guest Folio", {
 	refresh(frm) {
+		frm.page.clear_actions_menu();
+
+		// Always show a shortcut to the parent reservation
+		if (frm.doc.reservation) {
+			frm.add_custom_button(__("View Reservation"), () => {
+				frappe.set_route("Form", "Room Reservation", frm.doc.reservation);
+			});
+		}
+
+		if (frm.doc.docstatus === 0) {
+			frm.set_intro(__("Add service charges below, then Submit to settle this folio."), "blue");
+		}
+
 		if (frm.doc.docstatus === 1) {
 			frm.add_custom_button(
 				__("Sales Invoice"),
 				() => {
-					frappe.model.open_mapped_doc({
+					frappe.call({
 						method: "bookmyroom.book_my_room.doctype.guest_folio.guest_folio.make_sales_invoice_from_folio",
-						frm,
+						args: { source_name: frm.doc.name },
+						callback({ message }) {
+							if (message) {
+								frappe.set_route("Form", "Sales Invoice", message);
+							}
+						},
 					});
 				},
 				__("Create")
@@ -44,6 +62,8 @@ frappe.ui.form.on("Guest Folio Item", {
 				if (!row.description) {
 					frappe.model.set_value(cdt, cdn, "description", message.service_name);
 				}
+				_recalculate_row(cdt, cdn);
+				frm.trigger("_update_total");
 			}
 		});
 	},

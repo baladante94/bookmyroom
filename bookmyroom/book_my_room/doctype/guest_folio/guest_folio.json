@@ -1,10 +1,5 @@
 {
- "actions": [
-  {
-   "action": "Submit",
-   "label": "Settle Folio"
-  }
- ],
+ "actions": [],
  "autoname": "naming_series:",
  "creation": "2026-03-01 10:00:00.000000",
  "doctype": "DocType",
@@ -133,9 +128,9 @@
  "is_submittable": 1,
  "links": [
   {
-   "group": "Reservation",
-   "link_doctype": "Room Reservation",
-   "link_fieldname": "name"
+   "group": "Invoices",
+   "link_doctype": "Sales Invoice",
+   "link_fieldname": "bmr_guest_folio"
   }
  ],
  "modified": "2026-03-01 10:00:00.000000",

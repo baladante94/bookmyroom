@@ -11,14 +11,16 @@ app_license = "mit"
 # required_apps = []
 
 # Each item in the list will be shown as an app in the apps page
-add_to_apps_screen = [
-	{
-		"name": "bookmyroom",
-		"logo": "/assets/bookmyroom/images/logo.png",
-		"title": "Book My Room",
-		"route": "/desk/bookmyroom",
-	}
-]
+# add_to_apps_screen = [
+# 	{
+# 		"name": "bookmyroom",
+# 		"logo": "/assets/bookmyroom/images/logo.png",
+# 		"title": "Book My Room Hook",
+# 		"route": "/desk/bookmyroom",
+# 		"has_permission": "erpnext.check_app_permission",
+
+# 	}
+# ]
 
 # Includes in <head>
 # ------------------
@@ -59,8 +61,8 @@ add_to_apps_screen = [
 # Installation
 # ------------
 
-# before_install = "bookmyroom.install.before_install"
-# after_install = "bookmyroom.install.after_install"
+after_install = "bookmyroom.install.after_install"
+after_migrate = "bookmyroom.install.after_migrate"
 
 # Uninstallation
 # ------------
@@ -99,6 +101,73 @@ add_to_apps_screen = [
 
 # Scheduled Tasks
 # ---------------
+
+# Custom Fields
+# -------------
+# Adds Book My Room reference fields to ERPNext's Sales Invoice so that
+# invoices generated from a Room Reservation or Guest Folio are traceable
+# in both directions via the Connections panel.
+
+custom_fields = {
+	"Sales Invoice": [
+		{
+			"fieldname": "bmr_section",
+			"fieldtype": "Section Break",
+			"label": "Book My Room",
+			"insert_after": "remarks",
+			"collapsible": 1,
+		},
+		{
+			"fieldname": "bmr_reservation",
+			"fieldtype": "Link",
+			"label": "Room Reservation",
+			"options": "Room Reservation",
+			"insert_after": "bmr_section",
+			"read_only": 1,
+			"no_copy": 1,
+		},
+		{
+			"fieldname": "bmr_guest_folio",
+			"fieldtype": "Link",
+			"label": "Guest Folio",
+			"options": "Guest Folio",
+			"insert_after": "bmr_reservation",
+			"read_only": 1,
+			"no_copy": 1,
+		},
+	],
+	"Sales Invoice Item": [
+		{
+			"fieldname": "bmr_guest_folio",
+			"fieldtype": "Link",
+			"label": "Guest Folio",
+			"options": "Guest Folio",
+			"insert_after": "sales_invoice_item",
+			"read_only": 1,
+			"no_copy": 1,
+		},
+		{
+			"fieldname": "bmr_reservation",
+			"fieldtype": "Link",
+			"label": "Room Reservation",
+			"options": "Room Reservation",
+			"insert_after": "bmr_guest_folio",
+			"read_only": 1,
+			"no_copy": 1,
+		},
+	],
+}
+
+# Document Events
+# ---------------
+# Settle / reopen Guest Folios when a linked Sales Invoice is submitted or cancelled.
+
+doc_events = {
+	"Sales Invoice": {
+		"on_submit": "bookmyroom.book_my_room.doctype.guest_folio.guest_folio.on_sales_invoice_submit",
+		"on_cancel": "bookmyroom.book_my_room.doctype.guest_folio.guest_folio.on_sales_invoice_cancel",
+	},
+}
 
 scheduler_events = {
 	"daily": [

@@ -237,10 +237,51 @@ frappe.ui.form.on("Room Reservation Item", {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function _refreshActionButtons(frm) {
-	// ── Sales Invoice ─────────────────────────────────────────────────────── //
-	if (frm.doc.docstatus === 1 && !["Cancelled", "Checked Out", "No Show"].includes(frm.doc.status)) {
+	const isSubmitted = frm.doc.docstatus === 1;
+	const status = frm.doc.status;
+
+	// ── Check In ─────────────────────────────────────────────────────────── //
+	if (isSubmitted && status === "Booked") {
+		frm
+			.add_custom_button(__("Check In"), () => {
+				frappe.confirm(__("Check in guest now?"), () => {
+					frappe.call({ method: "do_check_in", doc: frm.doc }).then(() => frm.reload_doc());
+				});
+			})
+			.addClass("btn-primary");
+
+		frm.add_custom_button(__("No Show"), () => {
+			frappe.confirm(
+				__("Mark this reservation as No Show? Rooms will be freed."),
+				() => frappe.call({ method: "mark_no_show", doc: frm.doc }).then(() => frm.reload_doc())
+			);
+		});
+	}
+
+	// ── Post Service Charge (during stay) ────────────────────────────────── //
+	if (isSubmitted && status === "Checked In") {
+		frm.add_custom_button(__("Post Service Charge"), () => _openFolioDialog(frm));
+	}
+
+	// ── Check Out ────────────────────────────────────────────────────────── //
+	if (isSubmitted && status === "Checked In") {
+		frm
+			.add_custom_button(__("Check Out"), () => {
+				frappe.confirm(
+					__("Check out guest and create housekeeping tasks?"),
+					() =>
+						frappe
+							.call({ method: "do_check_out", doc: frm.doc })
+							.then(() => frm.reload_doc())
+				);
+			})
+			.addClass("btn-warning");
+	}
+
+	// ── Billing: always show Room Invoice when submitted ──────────────────── //
+	if (isSubmitted) {
 		frm.add_custom_button(
-			__("Sales Invoice"),
+			__("Room Invoice"),
 			() => {
 				frappe.model.open_mapped_doc({
 					method: "bookmyroom.book_my_room.doctype.room_reservation.room_reservation.make_sales_invoice",
@@ -249,66 +290,46 @@ function _refreshActionButtons(frm) {
 			},
 			__("Create")
 		);
-	}
 
-	// ── Guest Folio ───────────────────────────────────────────────────────── //
-	if (frm.doc.docstatus === 1 && frm.doc.status === "Checked In") {
-		frm.add_custom_button(
-			__("Guest Folio"),
-			() => _openFolioDialog(frm),
-			__("Create")
-		);
-	}
-
-	// ── Check In ─────────────────────────────────────────────────────────── //
-	if (frm.doc.docstatus === 1 && frm.doc.status === "Booked") {
-		frm
-			.add_custom_button(__("Check In"), () => {
-				frappe.confirm(__("Check in guest now?"), () => {
-					frappe
-						.call({
-							method: "do_check_in",
-							doc: frm.doc,
-						})
-						.then(() => frm.reload_doc());
-				});
+		// Check if any folios exist for this reservation (any status)
+		frappe
+			.call({
+				method: "bookmyroom.book_my_room.doctype.room_reservation.room_reservation.get_folios_for_reservation",
+				args: { reservation: frm.doc.name },
 			})
-			.addClass("btn-primary");
+			.then(({ message: folios }) => {
+				if (!folios || folios.length === 0) return;
 
-		// ── No Show ──────────────────────────────────────────────────────── //
-		frm.add_custom_button(__("No Show"), () => {
-			frappe.confirm(
-				__("Mark this reservation as No Show? Rooms will be freed."),
-				() => {
-					frappe
-						.call({
-							method: "mark_no_show",
-							doc: frm.doc,
-						})
-						.then(() => frm.reload_doc());
-				}
-			);
-		});
+				const folioTotal = folios.reduce((s, f) => s + (f.total_amount || 0), 0);
+				const label = __("Room + Folio Invoice ({0} folio{1}, {2})", [
+					folios.length,
+					folios.length > 1 ? "s" : "",
+					format_currency(folioTotal),
+				]);
+
+				frm.add_custom_button(label, () => _createCombinedInvoice(frm), __("Create"));
+			});
 	}
+}
 
-	// ── Check Out ────────────────────────────────────────────────────────── //
-	if (frm.doc.docstatus === 1 && frm.doc.status === "Checked In") {
-		frm
-			.add_custom_button(__("Check Out"), () => {
-				frappe.confirm(
-					__("Check out guest and create housekeeping tasks?"),
-					() => {
-						frappe
-							.call({
-								method: "do_check_out",
-								doc: frm.doc,
-							})
-							.then(() => frm.reload_doc());
+function _createCombinedInvoice(frm) {
+	frappe.confirm(
+		__(
+			"Create one invoice with room charges + all folio service charges? " +
+				"Any unsettled folios will be automatically settled."
+		),
+		() => {
+			frappe.call({
+				method: "bookmyroom.book_my_room.doctype.room_reservation.room_reservation.make_combined_invoice",
+				args: { source_name: frm.doc.name },
+				callback({ message }) {
+					if (message) {
+						frappe.set_route("Form", "Sales Invoice", message);
 					}
-				);
-			})
-			.addClass("btn-warning");
-	}
+				},
+			});
+		}
+	);
 }
 
 /**
@@ -336,15 +357,6 @@ function _openFolioDialog(frm) {
 				filters: { is_active: 1 },
 			},
 			{
-				label: __("Description"),
-				fieldname: "description",
-				fieldtype: "Data",
-				reqd: 1,
-			},
-			{
-				fieldtype: "Column Break",
-			},
-			{
 				label: __("Quantity"),
 				fieldname: "quantity",
 				fieldtype: "Float",
@@ -362,6 +374,12 @@ function _openFolioDialog(frm) {
 				fieldname: "amount",
 				fieldtype: "Currency",
 				read_only: 1,
+			},
+			{
+				label: __("Description"),
+				fieldname: "description",
+				fieldtype: "Data",
+				reqd: 1,
 			},
 		],
 		primary_action_label: __("Post Charge"),

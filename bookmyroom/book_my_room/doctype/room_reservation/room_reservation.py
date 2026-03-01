@@ -228,15 +228,37 @@ class RoomReservation(Document):
 # ------------------------------------------------------------------ #
 
 
+def _check_no_submitted_invoice(reservation_name):
+	"""Raise ValidationError if a submitted Sales Invoice already exists for this reservation."""
+	existing = frappe.get_all(
+		"Sales Invoice",
+		filters={"bmr_reservation": reservation_name, "docstatus": 1},
+		fields=["name"],
+		limit=1,
+	)
+	if existing:
+		frappe.throw(
+			_(
+				"Submitted Sales Invoice {0} already exists for this reservation. "
+				"Cancel it before generating a new one."
+			).format(frappe.bold(existing[0].name)),
+			exc=frappe.ValidationError,
+			title=_("Duplicate Invoice"),
+		)
+
+
 @frappe.whitelist()
 def make_sales_invoice(source_name, target_doc=None):
 	"""Map a submitted Room Reservation to a draft Sales Invoice."""
 	from frappe.utils import getdate as _getdate
 
+	_check_no_submitted_invoice(source_name)
+
 	def set_missing_values(source, target):
 		target.customer = source.customer
 		target.company = source.company
 		target.due_date = _getdate(source.check_out)
+		target.bmr_reservation = source.name
 		target.run_method("set_missing_values")
 		target.run_method("calculate_taxes_and_totals")
 
@@ -260,6 +282,7 @@ def make_sales_invoice(source_name, target_doc=None):
 		target_row.qty = source_parent.total_nights or 1
 		target_row.rate = flt(source_row.rate)
 		target_row.amount = flt(source_row.amount)
+		target_row.bmr_reservation = source_parent.name
 
 	return get_mapped_doc(
 		"Room Reservation",
@@ -284,6 +307,105 @@ def make_sales_invoice(source_name, target_doc=None):
 		},
 		target_doc,
 		set_missing_values,
+	)
+
+
+@frappe.whitelist()
+def make_combined_invoice(source_name):
+	"""
+	Create a draft Sales Invoice containing:
+	  • Room charges from the Room Reservation
+	  • All Open (unsettled) Guest Folio charges linked to this reservation
+
+	Folios are NOT settled at this point — they will be settled automatically
+	when the Sales Invoice is submitted (via the on_submit doc_event hook).
+	Returns the new Sales Invoice name so JS can open it.
+	"""
+	_check_no_submitted_invoice(source_name)
+
+	reservation = frappe.get_doc("Room Reservation", source_name)
+
+	if reservation.docstatus != 1:
+		frappe.throw(_("Please submit the reservation before billing."))
+
+	si = frappe.new_doc("Sales Invoice")
+	si.customer = reservation.customer
+	si.company = reservation.company
+	si.due_date = frappe.utils.getdate(reservation.check_out or frappe.utils.nowdate())
+
+	# ── Room charges ─────────────────────────────────────────────────────── #
+	for row in reservation.get("items"):
+		if not row.room_type:
+			continue
+		billing_item = frappe.db.get_value("Room Type", row.room_type, "billing_item")
+		if not billing_item:
+			frappe.throw(
+				_(
+					"Room Type <b>{0}</b> has no Billing Item configured. "
+					"Please set one before generating an invoice."
+				).format(row.room_type)
+			)
+		si.append(
+			"items",
+			{
+				"item_code": billing_item,
+				"description": _("Room {0} — {1} night(s) @ {2}/night").format(
+					row.room, reservation.total_nights, flt(row.rate)
+				),
+				"qty": reservation.total_nights or 1,
+				"rate": flt(row.rate),
+				"bmr_reservation": source_name,
+			},
+		)
+
+	# ── Open (unsettled) folio charges only ──────────────────────────────── #
+	open_folios = frappe.get_all(
+		"Guest Folio",
+		filters={"reservation": source_name, "status": "Open"},
+		fields=["name"],
+	)
+
+	for folio_info in open_folios:
+		folio = frappe.get_doc("Guest Folio", folio_info["name"])
+		for item in folio.get("items"):
+			billing_item = None
+			if item.service:
+				billing_item = frappe.db.get_value("Hotel Service", item.service, "billing_item")
+			if not billing_item:
+				frappe.throw(
+					_(
+						"Hotel Service <b>{0}</b> has no Billing Item set. "
+						"Please configure it before billing."
+					).format(item.service or _("Unknown"))
+				)
+			si.append(
+				"items",
+				{
+					"item_code": billing_item,
+					"description": item.description or item.service,
+					"qty": flt(item.quantity),
+					"rate": flt(item.rate),
+					"bmr_guest_folio": folio.name,
+				},
+			)
+
+	if not si.get("items"):
+		frappe.throw(_("No billable charges found for this reservation."))
+
+	si.bmr_reservation = source_name
+	si.run_method("set_missing_values")
+	si.run_method("calculate_taxes_and_totals")
+	si.insert(ignore_permissions=True)
+	return si.name
+
+
+@frappe.whitelist()
+def get_folios_for_reservation(reservation):
+	"""Return Open (unsettled) Guest Folios linked to a reservation."""
+	return frappe.get_all(
+		"Guest Folio",
+		filters={"reservation": reservation, "status": "Open"},
+		fields=["name", "total_amount", "status", "docstatus"],
 	)
 
 
