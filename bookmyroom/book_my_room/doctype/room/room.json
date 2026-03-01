@@ -10,9 +10,21 @@
   "hotel",
   "room_type",
   "status",
-  "details_section",
+  "col_break_0",
   "floor",
-  "capacity"
+  "capacity",
+  "housekeeping_status",
+  "details_section",
+  "bed_type",
+  "view_type",
+  "smoking",
+  "col_break_1",
+  "max_adults",
+  "max_children",
+  "amenities_section",
+  "amenities",
+  "notes_section",
+  "notes"
  ],
  "fields": [
   {
@@ -46,12 +58,11 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Status",
-   "options": "Available\nOccupied\nMaintenance"
+   "options": "Available\nOccupied\nOut of Order\nMaintenance"
   },
   {
-   "fieldname": "details_section",
-   "fieldtype": "Section Break",
-   "label": "Details"
+   "fieldname": "col_break_0",
+   "fieldtype": "Column Break"
   },
   {
    "fieldname": "floor",
@@ -61,11 +72,80 @@
   {
    "fieldname": "capacity",
    "fieldtype": "Int",
-   "label": "Capacity (Guests)"
+   "label": "Max Capacity (Guests)"
+  },
+  {
+   "default": "Clean",
+   "fieldname": "housekeeping_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Housekeeping Status",
+   "options": "Clean\nDirty\nIn Progress\nInspected"
+  },
+  {
+   "fieldname": "details_section",
+   "fieldtype": "Section Break",
+   "label": "Room Details"
+  },
+  {
+   "fetch_from": "room_type.bed_type",
+   "fieldname": "bed_type",
+   "fieldtype": "Select",
+   "label": "Bed Type",
+   "options": "\nSingle\nDouble\nQueen\nKing\nTwin\nBunk\nSofa Bed"
+  },
+  {
+   "fieldname": "view_type",
+   "fieldtype": "Select",
+   "label": "View",
+   "options": "\nSea View\nGarden View\nCity View\nPool View\nMountain View\nCourtyard View"
+  },
+  {
+   "default": "0",
+   "fieldname": "smoking",
+   "fieldtype": "Check",
+   "label": "Smoking Room"
+  },
+  {
+   "fieldname": "col_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "room_type.max_adults",
+   "fieldname": "max_adults",
+   "fieldtype": "Int",
+   "label": "Max Adults"
+  },
+  {
+   "fetch_from": "room_type.max_children",
+   "fieldname": "max_children",
+   "fieldtype": "Int",
+   "label": "Max Children"
+  },
+  {
+   "fieldname": "amenities_section",
+   "fieldtype": "Section Break",
+   "label": "Amenities"
+  },
+  {
+   "fieldname": "amenities",
+   "fieldtype": "Table",
+   "label": "Amenities",
+   "options": "Room Amenity"
+  },
+  {
+   "fieldname": "notes_section",
+   "fieldtype": "Section Break",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Internal Notes"
   }
  ],
  "links": [],
- "modified": "2026-02-25 10:00:00.000000",
+ "modified": "2026-03-01 10:00:00.000000",
  "modified_by": "Administrator",
  "module": "Book My Room",
  "name": "Room",

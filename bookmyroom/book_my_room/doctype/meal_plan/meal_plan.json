@@ -1,0 +1,101 @@
+{
+ "actions": [],
+ "autoname": "field:plan_name",
+ "creation": "2026-03-01 10:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "plan_name",
+  "description",
+  "meal_section",
+  "breakfast_included",
+  "lunch_included",
+  "col_break_1",
+  "dinner_included",
+  "rate_section",
+  "extra_rate_per_person"
+ ],
+ "fields": [
+  {
+   "bold": 1,
+   "fieldname": "plan_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Plan Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
+   "label": "Description"
+  },
+  {
+   "fieldname": "meal_section",
+   "fieldtype": "Section Break",
+   "label": "Included Meals"
+  },
+  {
+   "default": "0",
+   "fieldname": "breakfast_included",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Breakfast"
+  },
+  {
+   "default": "0",
+   "fieldname": "lunch_included",
+   "fieldtype": "Check",
+   "label": "Lunch"
+  },
+  {
+   "fieldname": "col_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "dinner_included",
+   "fieldtype": "Check",
+   "label": "Dinner"
+  },
+  {
+   "fieldname": "rate_section",
+   "fieldtype": "Section Break",
+   "label": "Rate"
+  },
+  {
+   "fieldname": "extra_rate_per_person",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Extra Rate Per Person (Per Night)",
+   "description": "Added to room rate for each guest per night"
+  }
+ ],
+ "links": [],
+ "modified": "2026-03-01 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Book My Room",
+ "name": "Meal Plan",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

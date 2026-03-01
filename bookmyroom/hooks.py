@@ -11,15 +11,14 @@ app_license = "mit"
 # required_apps = []
 
 # Each item in the list will be shown as an app in the apps page
-# add_to_apps_screen = [
-# 	{
-# 		"name": "bookmyroom",
-# 		"logo": "/assets/bookmyroom/logo.png",
-# 		"title": "Book My Room",
-# 		"route": "/bookmyroom",
-# 		"has_permission": "bookmyroom.api.permission.has_app_permission"
-# 	}
-# ]
+add_to_apps_screen = [
+	{
+		"name": "bookmyroom",
+		"logo": "/assets/bookmyroom/images/logo.png",
+		"title": "Book My Room",
+		"route": "/desk/bookmyroom",
+	}
+]
 
 # Includes in <head>
 # ------------------
@@ -31,22 +30,6 @@ app_license = "mit"
 # include js, css files in header of web template
 # web_include_css = "/assets/bookmyroom/css/bookmyroom.css"
 # web_include_js = "/assets/bookmyroom/js/bookmyroom.js"
-
-# include custom scss in every website theme (without file extension ".scss")
-# website_theme_scss = "bookmyroom/public/scss/website"
-
-# include js, css files in header of web form
-# webform_include_js = {"doctype": "public/js/doctype.js"}
-# webform_include_css = {"doctype": "public/css/doctype.css"}
-
-# include js in page
-# page_js = {"page" : "public/js/file.js"}
-
-# include js in doctype views
-# doctype_js = {"doctype" : "public/js/doctype.js"}
-# doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
-# doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
-# doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
 
 # Svg Icons
 # ------------------
@@ -63,15 +46,6 @@ app_license = "mit"
 # role_home_page = {
 # 	"Role": "home_page"
 # }
-
-# Generators
-# ----------
-
-# automatically create page for each record of this doctype
-# website_generators = ["Web Page"]
-
-# automatically load and sync documents of this doctype from downstream apps
-# importable_doctypes = [doctype_1]
 
 # Jinja
 # ----------
@@ -94,22 +68,6 @@ app_license = "mit"
 # before_uninstall = "bookmyroom.uninstall.before_uninstall"
 # after_uninstall = "bookmyroom.uninstall.after_uninstall"
 
-# Integration Setup
-# ------------------
-# To set up dependencies/integrations with other apps
-# Name of the app being installed is passed as an argument
-
-# before_app_install = "bookmyroom.utils.before_app_install"
-# after_app_install = "bookmyroom.utils.after_app_install"
-
-# Integration Cleanup
-# -------------------
-# To clean up dependencies/integrations with other apps
-# Name of the app being uninstalled is passed as an argument
-
-# before_app_uninstall = "bookmyroom.utils.before_app_uninstall"
-# after_app_uninstall = "bookmyroom.utils.after_app_uninstall"
-
 # Desk Notifications
 # ------------------
 # See frappe.core.notifications.get_notification_config
@@ -118,7 +76,6 @@ app_license = "mit"
 
 # Permissions
 # -----------
-# Permissions evaluated in scripted ways
 
 # permission_query_conditions = {
 # 	"Event": "frappe.desk.doctype.event.event.get_permission_query_conditions",
@@ -143,44 +100,25 @@ app_license = "mit"
 # Scheduled Tasks
 # ---------------
 
-# scheduler_events = {
-# 	"all": [
-# 		"bookmyroom.tasks.all"
-# 	],
-# 	"daily": [
-# 		"bookmyroom.tasks.daily"
-# 	],
-# 	"hourly": [
-# 		"bookmyroom.tasks.hourly"
-# 	],
-# 	"weekly": [
-# 		"bookmyroom.tasks.weekly"
-# 	],
-# 	"monthly": [
-# 		"bookmyroom.tasks.monthly"
-# 	],
-# }
+scheduler_events = {
+	"daily": [
+		"bookmyroom.tasks.send_checkin_reminders",
+		"bookmyroom.tasks.auto_generate_housekeeping_tasks",
+	],
+}
 
 # Testing
 # -------
 
 # before_tests = "bookmyroom.install.before_tests"
 
-# Extend DocType Class
-# ------------------------------
-#
-# Specify custom mixins to extend the standard doctype controller.
-# extend_doctype_class = {
-# 	"Task": "bookmyroom.custom.task.CustomTaskMixin"
-# }
-
 # Overriding Methods
 # ------------------------------
-#
+
 # override_whitelisted_methods = {
 # 	"frappe.desk.doctype.event.event.get_events": "bookmyroom.event.get_events"
 # }
-#
+
 # each overriding function accepts a `data` argument;
 # generated from the base implementation of the doctype dashboard,
 # along with any modifications made in other Frappe apps
@@ -196,40 +134,6 @@ app_license = "mit"
 # -----------------------------------------------------------
 
 # ignore_links_on_delete = ["Communication", "ToDo"]
-
-# Request Events
-# ----------------
-# before_request = ["bookmyroom.utils.before_request"]
-# after_request = ["bookmyroom.utils.after_request"]
-
-# Job Events
-# ----------
-# before_job = ["bookmyroom.utils.before_job"]
-# after_job = ["bookmyroom.utils.after_job"]
-
-# User Data Protection
-# --------------------
-
-# user_data_fields = [
-# 	{
-# 		"doctype": "{doctype_1}",
-# 		"filter_by": "{filter_by}",
-# 		"redact_fields": ["{field_1}", "{field_2}"],
-# 		"partial": 1,
-# 	},
-# 	{
-# 		"doctype": "{doctype_2}",
-# 		"filter_by": "{filter_by}",
-# 		"partial": 1,
-# 	},
-# 	{
-# 		"doctype": "{doctype_3}",
-# 		"strict": False,
-# 	},
-# 	{
-# 		"doctype": "{doctype_4}"
-# 	}
-# ]
 
 # Authentication and authorization
 # --------------------------------
@@ -249,4 +153,3 @@ app_license = "mit"
 # ------------
 # List of apps whose translatable strings should be excluded from this app's translations.
 # ignore_translatable_strings_from = []
-

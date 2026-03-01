@@ -7,11 +7,24 @@
  "engine": "InnoDB",
  "field_order": [
   "hotel_name",
+  "star_rating",
+  "website",
+  "col_break_0",
+  "checkin_time",
+  "checkout_time",
+  "tax_rate",
   "address_section",
   "address",
+  "city",
+  "country",
   "contact_section",
   "phone",
-  "email"
+  "col_break_1",
+  "email",
+  "policies_section",
+  "cancellation_policy",
+  "description_section",
+  "description"
  ],
  "fields": [
   {
@@ -24,6 +37,40 @@
    "unique": 1
   },
   {
+   "fieldname": "star_rating",
+   "fieldtype": "Rating",
+   "in_list_view": 1,
+   "label": "Star Rating"
+  },
+  {
+   "fieldname": "website",
+   "fieldtype": "Data",
+   "label": "Website",
+   "options": "URL"
+  },
+  {
+   "fieldname": "col_break_0",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "14:00:00",
+   "fieldname": "checkin_time",
+   "fieldtype": "Time",
+   "label": "Default Check-in Time"
+  },
+  {
+   "default": "12:00:00",
+   "fieldname": "checkout_time",
+   "fieldtype": "Time",
+   "label": "Default Check-out Time"
+  },
+  {
+   "fieldname": "tax_rate",
+   "fieldtype": "Percent",
+   "label": "Default Tax Rate (%)",
+   "description": "Applied automatically to all reservations at this hotel"
+  },
+  {
    "fieldname": "address_section",
    "fieldtype": "Section Break",
    "label": "Address"
@@ -32,6 +79,17 @@
    "fieldname": "address",
    "fieldtype": "Text",
    "label": "Address"
+  },
+  {
+   "fieldname": "city",
+   "fieldtype": "Data",
+   "label": "City"
+  },
+  {
+   "fieldname": "country",
+   "fieldtype": "Link",
+   "label": "Country",
+   "options": "Country"
   },
   {
    "fieldname": "contact_section",
@@ -45,14 +103,39 @@
    "options": "Phone"
   },
   {
+   "fieldname": "col_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
    "fieldname": "email",
    "fieldtype": "Data",
    "label": "Email",
    "options": "Email"
+  },
+  {
+   "fieldname": "policies_section",
+   "fieldtype": "Section Break",
+   "label": "Policies"
+  },
+  {
+   "fieldname": "cancellation_policy",
+   "fieldtype": "Small Text",
+   "label": "Cancellation Policy",
+   "description": "e.g. Free cancellation up to 24h before check-in. After that, one night is charged."
+  },
+  {
+   "fieldname": "description_section",
+   "fieldtype": "Section Break",
+   "label": "Description"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Text Editor",
+   "label": "Description"
   }
  ],
  "links": [],
- "modified": "2026-02-25 10:00:00.000000",
+ "modified": "2026-03-01 10:00:00.000000",
  "modified_by": "Administrator",
  "module": "Book My Room",
  "name": "Hotel",
