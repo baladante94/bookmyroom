@@ -1,0 +1,36 @@
+{
+ "actions": [],
+ "creation": "2026-03-03 10:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "block_backdated_booking"
+ ],
+ "fields": [
+  {
+   "default": "0",
+   "description": "When enabled, users cannot create or save a Room Reservation with a check-in date earlier than today.",
+   "fieldname": "block_backdated_booking",
+   "fieldtype": "Check",
+   "label": "Block Backdated Booking"
+  }
+ ],
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-03-03 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Book My Room",
+ "name": "Booking Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "read": 1,
+   "role": "System Manager",
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 0
+}

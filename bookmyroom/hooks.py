@@ -64,6 +64,10 @@ app_license = "mit"
 after_install = "bookmyroom.install.after_install"
 after_migrate = "bookmyroom.install.after_migrate"
 
+fixtures = [
+	{"dt": "Custom HTML Block", "filters": [["name", "=", "BMR Room Status Grid"]]},
+]
+
 # Uninstallation
 # ------------
 

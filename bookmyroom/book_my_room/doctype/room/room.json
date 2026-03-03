@@ -5,6 +5,7 @@
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
+ "is_calendar_and_gantt": 1,
  "field_order": [
   "room_name",
   "hotel",
@@ -58,7 +59,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Status",
-   "options": "Available\nOccupied\nOut of Order\nMaintenance"
+   "options": "Available\nOccupied\nVacant\nOut of Order\nMaintenance"
   },
   {
    "fieldname": "col_break_0",
@@ -167,6 +168,12 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": [],
+ "states": [
+  {"color": "Green", "title": "Available"},
+  {"color": "Red", "title": "Occupied"},
+  {"color": "Orange", "title": "Vacant"},
+  {"color": "Grey", "title": "Out of Order"},
+  {"color": "Purple", "title": "Maintenance"}
+ ],
  "track_changes": 1
 }

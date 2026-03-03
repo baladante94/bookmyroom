@@ -11,15 +11,7 @@ frappe.ui.form.on("Room Reservation", {
 	// ── Setup ──────────────────────────────────────────────────────────────── //
 
 	setup(frm) {
-		// Limit room picker to the selected hotel and available/occupied rooms
-		frm.set_query("room", "items", function () {
-			return {
-				filters: {
-					hotel: frm.doc.hotel || "",
-					status: ["in", ["Available", "Occupied"]],
-				},
-			};
-		});
+		_set_room_query(frm);
 	},
 
 	// ── Lifecycle ──────────────────────────────────────────────────────────── //
@@ -27,21 +19,62 @@ frappe.ui.form.on("Room Reservation", {
 	refresh(frm) {
 		_refreshActionButtons(frm);
 		_updateBalanceColor(frm);
+
+		// Pre-fill room from dashboard click (window._bmr_prefill_room set by workspace grid)
+		if (frm.is_new() && window._bmr_prefill_room) {
+			const room_name = window._bmr_prefill_room;
+			window._bmr_prefill_room = null;
+			// Frappe auto-adds one empty row; reuse it instead of adding a second
+			const existing = frm.doc.items || [];
+			const row =
+				existing.length === 1 && !existing[0].room
+					? existing[0]
+					: frappe.model.add_child(frm.doc, "Room Reservation Item", "items");
+			frm.refresh_field("items");
+			frappe.model
+				.set_value(row.doctype, row.name, "room", room_name)
+				.then(() => frm.refresh_field("items"));
+		}
 	},
 
 	// ── Field change handlers ──────────────────────────────────────────────── //
 
 	hotel(frm) {
-		// Fetch hotel tax rate and recalculate
+		_set_room_query(frm);
 		if (!frm.doc.hotel) {
 			_taxRate = 0;
 			frm.trigger("calculate_totals");
 			return;
 		}
-		frappe.db.get_value("Hotel", frm.doc.hotel, "tax_rate").then(({ message }) => {
-			_taxRate = flt(message?.tax_rate);
-			frm.trigger("calculate_totals");
-		});
+		// Fetch tax rate + default check-in/out times together
+		frappe.db
+			.get_value("Hotel", frm.doc.hotel, ["tax_rate", "checkin_time", "checkout_time"])
+			.then(({ message }) => {
+				_taxRate = flt(message?.tax_rate);
+
+				// Always apply hotel's default times.
+				// Preserve the DATE the user (or dashboard route_options) already set;
+				// replace only the TIME portion.
+				const cin_time = message?.checkin_time || "14:00:00";
+				const cout_time = message?.checkout_time || "12:00:00";
+				const today = frappe.datetime.get_today();
+				const tomorrow = frappe.datetime.add_days(today, 1);
+				const cin_date = frm.doc.check_in
+					? frm.doc.check_in.split(" ")[0]
+					: today;
+				const cout_date = frm.doc.check_out
+					? frm.doc.check_out.split(" ")[0]
+					: tomorrow;
+
+				// Must use frm.set_value() — this calls datepicker.selectDate() internally
+				// so Air Datepicker's selectedDates array is populated.  If we set
+				// frm.doc.field directly the picker has no selected date and shows blank
+				// the next time the user clicks the field.
+				_set_datetime_with_picker(frm, "check_in", cin_date + " " + cin_time);
+				_set_datetime_with_picker(frm, "check_out", cout_date + " " + cout_time);
+
+				frm.trigger("calculate_totals");
+			});
 	},
 
 	meal_plan(frm) {
@@ -59,11 +92,14 @@ frappe.ui.form.on("Room Reservation", {
 	},
 
 	check_in(frm) {
+		_set_room_query(frm);
+		_check_backdated(frm);
 		frm.trigger("calculate_totals");
 		frm.trigger("_apply_rate_plan");
 	},
 
 	check_out(frm) {
+		_set_room_query(frm);
 		frm.trigger("calculate_totals");
 	},
 
@@ -235,6 +271,24 @@ frappe.ui.form.on("Room Reservation Item", {
 // ─────────────────────────────────────────────────────────────────────────────
 // Private helpers
 // ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Set (or refresh) the room search query on the items child table.
+ * Filters by hotel + status=Available and excludes rooms with overlapping bookings.
+ */
+function _set_room_query(frm) {
+	frm.set_query("room", "items", function () {
+		return {
+			query: "bookmyroom.book_my_room.doctype.room_reservation.room_reservation.get_rooms_for_query",
+			filters: {
+				hotel: frm.doc.hotel || "",
+				check_in: frm.doc.check_in || "",
+				check_out: frm.doc.check_out || "",
+				current_reservation: frm.doc.name || "__newdoc__",
+			},
+		};
+	});
+}
 
 function _refreshActionButtons(frm) {
 	const isSubmitted = frm.doc.docstatus === 1;
@@ -447,10 +501,52 @@ function _recalcDialogAmount(dialog) {
 	dialog.set_value("amount", qty * rate);
 }
 
+/**
+ * Client-side guard: warn + clear check_in if backdated booking is blocked.
+ * The server re-validates on save; this gives instant feedback.
+ */
+function _check_backdated(frm) {
+	if (!frm.doc.check_in) return;
+	const check_in_date = frm.doc.check_in.split(" ")[0];
+	const today = frappe.datetime.get_today();
+	if (check_in_date >= today) return; // not backdated
+	frappe.db
+		.get_single_value("Booking Settings", "block_backdated_booking")
+		.then((blocked) => {
+			if (blocked) {
+				frappe.msgprint({
+					title: __("Backdated Booking Blocked"),
+					message: __(
+						"Check-in date cannot be earlier than today. Backdated bookings are disabled in <b>Booking Settings</b>."
+					),
+					indicator: "red",
+				});
+				frm.set_value("check_in", "");
+			}
+		});
+}
+
 /** Highlight balance_due in red when the guest still owes money. */
 function _updateBalanceColor(frm) {
 	const balance = flt(frm.doc.balance_due);
 	if (!frm.fields_dict.balance_due) return;
 	const $field = frm.fields_dict.balance_due.$wrapper;
 	$field.find(".control-value").css("color", balance > 0 ? "var(--red-600)" : "var(--green-600)");
+}
+
+function _set_datetime_with_picker(frm, fieldname, value) {
+	// set doc value normally
+	frm.doc[fieldname] = value;
+
+	// update control UI
+	const field = frm.fields_dict[fieldname];
+	if (!field || !field.datepicker) return;
+
+	// convert to JS Date
+	const dt = frappe.datetime.str_to_obj(value);
+
+	// sync Air Datepicker internal state
+	field.datepicker.selectDate(dt);
+
+	field.refresh();
 }

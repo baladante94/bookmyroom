@@ -5,7 +5,7 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.model.mapper import get_mapped_doc
-from frappe.utils import flt, getdate, nowdate
+from frappe.utils import flt, format_datetime, getdate, nowdate
 
 
 class RoomReservation(Document):
@@ -15,6 +15,7 @@ class RoomReservation(Document):
 
 	def before_save(self):
 		self.validate_dates()
+		self.validate_backdated_booking()
 		self.validate_capacity()
 		self.calculate_totals()
 		self.validate_overlapping_bookings()
@@ -36,6 +37,20 @@ class RoomReservation(Document):
 			frappe.throw(
 				_("Check Out date must be after Check In date."),
 				title=_("Invalid Dates"),
+			)
+
+	def validate_backdated_booking(self):
+		"""Block backdated bookings when enabled in Booking Settings."""
+		if not self.check_in:
+			return
+		block = frappe.db.get_single_value("Booking Settings", "block_backdated_booking")
+		if block and getdate(self.check_in) < getdate(nowdate()):
+			frappe.throw(
+				_(
+					"Backdated bookings are not allowed. Check-in date cannot be earlier than today ({0})."
+					"<br>To allow backdated bookings, disable <b>Block Backdated Booking</b> in Booking Settings."
+				).format(frappe.bold(nowdate())),
+				title=_("Backdated Booking Blocked"),
 			)
 
 	def validate_capacity(self):
@@ -140,8 +155,8 @@ class RoomReservation(Document):
 					" Please choose different dates or a different room."
 				).format(
 					frappe.bold(c.room),
-					frappe.bold(frappe.format_datetime(c.check_in)),
-					frappe.bold(frappe.format_datetime(c.check_out)),
+					frappe.bold(format_datetime(c.check_in)),
+					frappe.bold(format_datetime(c.check_out)),
 					frappe.bold(c.name),
 				),
 				exc=frappe.ValidationError,
@@ -196,7 +211,7 @@ class RoomReservation(Document):
 			frappe.throw(_("Only reservations with status 'Checked In' can be checked out."))
 
 		self.db_set("status", "Checked Out")
-		self._update_room_status("Dirty")
+		self._update_room_status("Vacant")
 
 		hk_tasks = []
 		for row in self.get("items"):
@@ -437,7 +452,7 @@ def get_available_rooms(hotel, check_in, check_out, room_type=None):
 	# Filter available rooms
 	filters = {
 		"hotel": hotel,
-		"status": ["in", ["Available", "Clean"]],
+		"status": "Available",
 	}
 	if room_type:
 		filters["room_type"] = room_type
@@ -472,3 +487,58 @@ def get_applicable_rate(room_type, hotel, check_in_date):
 		order_by="valid_from desc",
 	)
 	return plans[0].rate_per_night if plans else None
+
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def get_rooms_for_query(doctype, txt, searchfield, start, page_len, filters, as_dict=False):
+	"""
+	Server-side search function for the room picker in the reservation child table.
+	Filters by hotel, status=Available, and excludes rooms booked for the given dates.
+	"""
+	import json
+
+	if isinstance(filters, str):
+		filters = json.loads(filters)
+
+	hotel = filters.get("hotel") or ""
+	check_in = filters.get("check_in") or ""
+	check_out = filters.get("check_out") or ""
+	current_reservation = filters.get("current_reservation") or ""
+
+	r = frappe.qb.DocType("Room")
+
+	# Hotel rooms that are bookable (exclude permanently unavailable statuses only)
+	query = (
+		frappe.qb.from_(r)
+		.select(r.name, r.room_type, r.floor, r.bed_type, r.status)
+		.where(r.hotel == hotel)
+		.where(r.status.notin(["Out of Order", "Maintenance"]))
+		.where(r[searchfield].like(f"%{txt}%"))
+		.offset(start)
+		.limit(page_len)
+	)
+
+	# Exclude rooms with overlapping active reservations
+	if check_in and check_out:
+		rr = frappe.qb.DocType("Room Reservation")
+		rri = frappe.qb.DocType("Room Reservation Item")
+		booked_query = (
+			frappe.qb.from_(rr)
+			.inner_join(rri)
+			.on(rr.name == rri.parent)
+			.select(rri.room)
+			.where(rr.hotel == hotel)
+			.where(rr.docstatus < 2)
+			.where(rr.status.notin(["Cancelled", "Checked Out", "No Show"]))
+			.where(rr.check_in < check_out)
+			.where(rr.check_out > check_in)
+		)
+		if current_reservation:
+			booked_query = booked_query.where(rr.name != current_reservation)
+
+		booked_rooms = [row.room for row in booked_query.run(as_dict=True)]
+		if booked_rooms:
+			query = query.where(r.name.notin(booked_rooms))
+
+	return query.run()

@@ -22,9 +22,14 @@
    "label": "Revenue by Room Type"
   }
  ],
- "content": "[{\"id\": \"j75L4AgQME\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Room Reservation\", \"col\": 2}}, {\"id\": \"kzAfoTwGyg\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Rooms\", \"col\": 2}}, {\"id\": \"7pxXXnOe2T\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Housekeeping\", \"col\": 2}}, {\"id\": \"DKNt3iyhOl\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Guest Folio\", \"col\": 2}}, {\"id\": \"Pl9WChBP4i\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Hotels\", \"col\": 2}}, {\"id\": \"nuorP7C6W4\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Rate Plans\", \"col\": 2}}, {\"id\": \"IJY5brB7mM\", \"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"id\": \"RSzqVniZwW\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Bookings Today\", \"col\": 4}}, {\"id\": \"hKgtzCVH1S\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Guests Checked In\", \"col\": 4}}, {\"id\": \"dEFyw5N3DH\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Available Rooms\", \"col\": 4}}, {\"id\": \"8BeXeSlw1n\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Pending Housekeeping\", \"col\": 4}}, {\"id\": \"UCUCG38gFI\", \"type\": \"number_card\", \"data\": {\"number_card_name\": \"Check-outs Today\", \"col\": 4}}, {\"id\": \"jey7xEWmH7\", \"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"id\": \"82eSg5N8Q1\", \"type\": \"chart\", \"data\": {\"chart_name\": \"Reservations by Month\", \"col\": 12}}, {\"id\": \"LVp6YJu3tC\", \"type\": \"chart\", \"data\": {\"chart_name\": \"Revenue by Month\", \"col\": 6}}, {\"id\": \"q3QFjuBFe2\", \"type\": \"chart\", \"data\": {\"chart_name\": \"Reservations by Status\", \"col\": 6}}, {\"id\": \"PLAAZ1gQty\", \"type\": \"chart\", \"data\": {\"chart_name\": \"Bookings by Source\", \"col\": 6}}, {\"id\": \"KKf5rI53bE\", \"type\": \"chart\", \"data\": {\"chart_name\": \"Revenue by Room Type\", \"col\": 6}}, {\"id\": \"TbtQzCh54W\", \"type\": \"spacer\", \"data\": {\"col\": 12}}]",
+ "content": "[{\"id\":\"j75L4AgQME\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Room Reservation\",\"col\":2}},{\"id\":\"kzAfoTwGyg\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Rooms\",\"col\":2}},{\"id\":\"7pxXXnOe2T\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Housekeeping\",\"col\":2}},{\"id\":\"DKNt3iyhOl\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Guest Folio\",\"col\":2}},{\"id\":\"Pl9WChBP4i\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Hotels\",\"col\":2}},{\"id\":\"nuorP7C6W4\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Rate Plans\",\"col\":2}},{\"id\":\"IJY5brB7mM\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"RSzqVniZwW\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Bookings Today\",\"col\":4}},{\"id\":\"hKgtzCVH1S\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Guests Checked In\",\"col\":4}},{\"id\":\"dEFyw5N3DH\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Available Rooms\",\"col\":4}},{\"id\":\"8BeXeSlw1n\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Pending Housekeeping\",\"col\":4}},{\"id\":\"UCUCG38gFI\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Check-outs Today\",\"col\":4}},{\"id\":\"wdD3BLJlIg\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"BMR Room Status Grid\",\"col\":12}},{\"id\":\"jey7xEWmH7\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"82eSg5N8Q1\",\"type\":\"chart\",\"data\":{\"chart_name\":\"Reservations by Month\",\"col\":12}},{\"id\":\"LVp6YJu3tC\",\"type\":\"chart\",\"data\":{\"chart_name\":\"Revenue by Month\",\"col\":6}},{\"id\":\"q3QFjuBFe2\",\"type\":\"chart\",\"data\":{\"chart_name\":\"Reservations by Status\",\"col\":6}},{\"id\":\"PLAAZ1gQty\",\"type\":\"chart\",\"data\":{\"chart_name\":\"Bookings by Source\",\"col\":6}},{\"id\":\"KKf5rI53bE\",\"type\":\"chart\",\"data\":{\"chart_name\":\"Revenue by Room Type\",\"col\":6}},{\"id\":\"TbtQzCh54W\",\"type\":\"spacer\",\"data\":{\"col\":12}}]",
  "creation": "2026-03-01 12:05:08.286147",
- "custom_blocks": [],
+ "custom_blocks": [
+  {
+   "custom_block_name": "BMR Room Status Grid",
+   "label": "BMR Room Status Grid"
+  }
+ ],
  "docstatus": 0,
  "doctype": "Workspace",
  "hide_custom": 0,
@@ -35,15 +40,6 @@
  "label": "Book My Room",
  "link_type": "DocType",
  "links": [
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Front Desk",
-   "link_count": 0,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
   {
    "dependencies": "",
    "hidden": 0,
@@ -76,15 +72,6 @@
    "link_type": "DocType",
    "onboard": 1,
    "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Masters",
-   "link_count": 0,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
   },
   {
    "dependencies": "",
@@ -153,15 +140,6 @@
    "type": "Link"
   },
   {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Pricing",
-   "link_count": 0,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
    "dependencies": "",
    "hidden": 0,
    "is_query_report": 0,
@@ -171,9 +149,20 @@
    "link_type": "DocType",
    "onboard": 1,
    "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Booking Settings",
+   "link_count": 0,
+   "link_to": "Booking Settings",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2026-03-01 12:05:08.286147",
+ "modified": "2026-03-03 19:01:28.063102",
  "modified_by": "Administrator",
  "module": "Book My Room",
  "name": "Book My Room",
