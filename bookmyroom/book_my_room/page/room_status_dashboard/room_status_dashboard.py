@@ -91,7 +91,7 @@ def get_calendar_data(hotel=None, from_date=None, to_date=None):
 
 	filters = {
 		"docstatus": 1,
-		"status": ["in", ["Booked", "Checked In", "Checked Out"]],
+		"status": ["in", ["Booked", "Checked In"]],
 		"check_in": ["<=", to_date + " 23:59:59"],
 		"check_out": [">=", from_date + " 00:00:00"],
 	}

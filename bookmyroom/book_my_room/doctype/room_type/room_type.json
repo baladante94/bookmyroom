@@ -7,8 +7,10 @@
  "engine": "InnoDB",
  "field_order": [
   "room_type_name",
+  "room_type_code",
   "billing_item",
   "default_rate",
+  "total_rooms",
   "col_break_0",
   "bed_type",
   "max_adults",
@@ -27,6 +29,12 @@
    "unique": 1
   },
   {
+   "fieldname": "room_type_code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Room Type Code"
+  },
+  {
    "fieldname": "billing_item",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -40,6 +48,14 @@
    "in_list_view": 1,
    "label": "Default Rate (Per Night)",
    "reqd": 1
+  },
+  {
+   "description": "Auto-calculated from linked Room records",
+   "fieldname": "total_rooms",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Total Rooms",
+   "read_only": 1
   },
   {
    "fieldname": "col_break_0",

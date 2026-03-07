@@ -4,7 +4,10 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "block_backdated_booking"
+  "block_backdated_booking",
+  "billing_items_section",
+  "billing_items_imported",
+  "setup_billing_items_btn"
  ],
  "fields": [
   {
@@ -13,11 +16,31 @@
    "fieldname": "block_backdated_booking",
    "fieldtype": "Check",
    "label": "Block Backdated Booking"
+  },
+  {
+   "fieldname": "billing_items_section",
+   "fieldtype": "Section Break",
+   "label": "Standard Billing Items"
+  },
+  {
+   "default": "0",
+   "description": "Standard hotel billing items (Room Charge, Meal Plans, Laundry, Spa, etc.) have been imported into the system.",
+   "fieldname": "billing_items_imported",
+   "fieldtype": "Check",
+   "label": "Items Imported",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:!doc.billing_items_imported",
+   "description": "Creates 16 standard hotel billing items with SAC codes and GST rates. This action cannot be undone — items must be deleted manually if no longer needed.",
+   "fieldname": "setup_billing_items_btn",
+   "fieldtype": "Button",
+   "label": "Import Standard Billing Items"
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2026-03-03 10:00:00.000000",
+ "modified": "2026-03-07 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Book My Room",
  "name": "Booking Settings",

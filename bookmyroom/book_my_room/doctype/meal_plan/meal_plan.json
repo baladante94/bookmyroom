@@ -7,6 +7,7 @@
  "engine": "InnoDB",
  "field_order": [
   "plan_name",
+  "billing_item",
   "description",
   "meal_section",
   "breakfast_included",
@@ -25,6 +26,13 @@
    "label": "Plan Name",
    "reqd": 1,
    "unique": 1
+  },
+  {
+   "description": "Item used when creating a Sales Invoice for meal plan charges",
+   "fieldname": "billing_item",
+   "fieldtype": "Link",
+   "label": "Billing Item",
+   "options": "Item"
   },
   {
    "fieldname": "description",

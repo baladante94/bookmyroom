@@ -111,7 +111,15 @@ frappe.ui.form.on("Room Reservation", {
 		frm.trigger("calculate_totals");
 	},
 
+	discount_type(frm) {
+		frm.trigger("calculate_totals");
+	},
+
 	discount_percentage(frm) {
+		frm.trigger("calculate_totals");
+	},
+
+	discount_value(frm) {
 		frm.trigger("calculate_totals");
 	},
 
@@ -151,13 +159,37 @@ frappe.ui.form.on("Room Reservation", {
 
 		// Discount
 		const subtotal = room_total + meal_plan_amount;
-		const discount_amount = flt((subtotal * flt(frm.doc.discount_percentage)) / 100);
+		let discount_amount = 0;
+		if (frm.doc.discount_type === "Fixed Amount") {
+			discount_amount = Math.min(flt(frm.doc.discount_value || 0), subtotal);
+		} else {
+			discount_amount = flt((subtotal * flt(frm.doc.discount_percentage || 0)) / 100);
+		}
 		frm.set_value("discount_amount", discount_amount);
 		const after_discount = subtotal - discount_amount;
 
-		// Tax
-		const tax_amount = flt((after_discount * _taxRate) / 100);
+		// Tax — use hotel rate if set, else GST slab
+		let tax_rate = _taxRate;
+		let tax_desc = "";
+		if (tax_rate > 0) {
+			tax_desc = __("Tax {0}%", [tax_rate]);
+		} else {
+			// GST slab auto-detect from avg room rate
+			const rates = (frm.doc.items || []).map((r) => flt(r.rate)).filter((r) => r > 0);
+			if (rates.length) {
+				const avg = rates.reduce((a, b) => a + b, 0) / rates.length;
+				if (avg <= 1000) {
+					tax_rate = 0; tax_desc = __("GST Exempt (tariff ≤ ₹1,000/night)");
+				} else if (avg <= 7500) {
+					tax_rate = 5; tax_desc = __("GST 5% (tariff ₹1,001–₹7,500/night)");
+				} else {
+					tax_rate = 18; tax_desc = __("GST 18% (tariff > ₹7,500/night)");
+				}
+			}
+		}
+		const tax_amount = flt((after_discount * tax_rate) / 100);
 		frm.set_value("tax_amount", tax_amount);
+		frm.set_value("tax_description", tax_desc);
 
 		// Grand total & balance
 		const grand_total = after_discount + tax_amount;

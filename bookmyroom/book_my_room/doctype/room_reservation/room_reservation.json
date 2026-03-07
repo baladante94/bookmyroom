@@ -29,12 +29,16 @@
   "col_break_3",
   "advance_payment_date",
   "totals_section",
+  "discount_type",
   "discount_percentage",
+  "discount_value",
   "col_break_4",
   "total_amount",
   "meal_plan_amount",
   "discount_amount",
   "tax_amount",
+  "tax_description",
+  "item_tax_template",
   "grand_total",
   "balance_due",
   "additional_section",
@@ -192,9 +196,23 @@
    "label": "Totals"
   },
   {
+   "default": "Percentage",
+   "fieldname": "discount_type",
+   "fieldtype": "Select",
+   "label": "Discount Type",
+   "options": "Percentage\nFixed Amount"
+  },
+  {
+   "depends_on": "eval:doc.discount_type !== 'Fixed Amount'",
    "fieldname": "discount_percentage",
    "fieldtype": "Percent",
    "label": "Discount (%)"
+  },
+  {
+   "depends_on": "eval:doc.discount_type === 'Fixed Amount'",
+   "fieldname": "discount_value",
+   "fieldtype": "Currency",
+   "label": "Discount Amount (Fixed)"
   },
   {
    "fieldname": "col_break_4",
@@ -222,6 +240,21 @@
    "fieldname": "tax_amount",
    "fieldtype": "Currency",
    "label": "Tax Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "tax_description",
+   "fieldtype": "Data",
+   "label": "Tax Applied",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "hotel.item_tax_template",
+   "fetch_if_empty": 0,
+   "fieldname": "item_tax_template",
+   "fieldtype": "Link",
+   "label": "Item Tax Template",
+   "options": "Item Tax Template",
    "read_only": 1
   },
   {

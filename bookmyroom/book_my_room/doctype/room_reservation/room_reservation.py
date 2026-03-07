@@ -54,7 +54,7 @@ class RoomReservation(Document):
 			)
 
 	def validate_capacity(self):
-		"""Warn (non-blocking) if guest count exceeds room capacity."""
+		"""Block saving if guest count exceeds any room's capacity."""
 		total_guests = (self.num_adults or 0) + (self.num_children or 0)
 		if not total_guests:
 			return
@@ -63,14 +63,14 @@ class RoomReservation(Document):
 				continue
 			capacity = frappe.db.get_value("Room", row.room, "capacity") or 0
 			if capacity and total_guests > capacity:
-				frappe.msgprint(
-					_("Room {0} has a capacity of {1} guest(s), but {2} guest(s) are booked.").format(
+				frappe.throw(
+					_("Room {0} has a maximum capacity of {1} guest(s), but {2} guest(s) are booked."
+					  " Please reduce the guest count or choose a different room.").format(
 						frappe.bold(row.room),
 						frappe.bold(capacity),
 						frappe.bold(total_guests),
 					),
-					indicator="orange",
-					alert=True,
+					title=_("Capacity Exceeded"),
 				)
 
 	def calculate_totals(self):
@@ -103,18 +103,55 @@ class RoomReservation(Document):
 
 		# --- Discount ---
 		subtotal = self.total_amount + self.meal_plan_amount
-		self.discount_amount = flt(subtotal * flt(self.discount_percentage) / 100)
+		if self.discount_type == "Fixed Amount":
+			self.discount_amount = min(flt(self.discount_value or 0), subtotal)
+		else:
+			self.discount_amount = flt(subtotal * flt(self.discount_percentage or 0) / 100)
 		after_discount = subtotal - self.discount_amount
 
-		# --- Tax (fetched from Hotel) ---
-		tax_rate = 0.0
-		if self.hotel:
-			tax_rate = frappe.db.get_value("Hotel", self.hotel, "tax_rate") or 0
-		self.tax_amount = flt(after_discount * flt(tax_rate) / 100)
+		# --- Tax ---
+		tax_rate, tax_desc = self._get_tax_rate()
+		self.tax_amount = flt(after_discount * tax_rate / 100)
+		self.tax_description = tax_desc
 
 		# --- Grand total & balance ---
 		self.grand_total = after_discount + self.tax_amount
 		self.balance_due = flt(self.grand_total) - flt(self.advance_amount or 0)
+
+	def _get_tax_rate(self):
+		"""Return (tax_rate_pct, description).
+
+		Priority:
+		1. Hotel's Item Tax Template → gst_rate field
+		2. Hotel's flat tax_rate
+		3. Auto GST slab from avg room rate
+		"""
+		# 1. Item Tax Template (India Compliance)
+		template = self.item_tax_template or (
+			frappe.db.get_value("Hotel", self.hotel, "item_tax_template") if self.hotel else None
+		)
+		if template:
+			gst_rate = frappe.db.get_value("Item Tax Template", template, "gst_rate") or 0
+			if flt(gst_rate) > 0:
+				return flt(gst_rate), _("GST {0}% ({1})").format(flt(gst_rate), template)
+
+		# 2. Hotel flat tax rate
+		if self.hotel:
+			hotel_tax = frappe.db.get_value("Hotel", self.hotel, "tax_rate") or 0
+			if flt(hotel_tax) > 0:
+				return flt(hotel_tax), _("Tax {0}%").format(flt(hotel_tax))
+
+		# 3. Auto GST slab (Indian hotel tariff rules)
+		rates = [flt(row.rate) for row in self.get("items") if flt(row.rate) > 0]
+		if not rates:
+			return 0.0, ""
+		avg_rate = sum(rates) / len(rates)
+		if avg_rate <= 1000:
+			return 0.0, _("GST Exempt (tariff ≤ ₹1,000/night)")
+		elif avg_rate <= 7500:
+			return 5.0, _("GST 5% (tariff ₹1,001–₹7,500/night)")
+		else:
+			return 18.0, _("GST 18% (tariff > ₹7,500/night)")
 
 	def validate_overlapping_bookings(self):
 		"""
@@ -274,6 +311,29 @@ def make_sales_invoice(source_name, target_doc=None):
 		target.company = source.company
 		target.due_date = _getdate(source.check_out)
 		target.bmr_reservation = source.name
+
+		# Add meal plan charges as a separate line item if applicable
+		if flt(source.meal_plan_amount) > 0 and source.meal_plan:
+			meal_billing_item = frappe.db.get_value("Meal Plan", source.meal_plan, "billing_item")
+			if meal_billing_item:
+				meal_tax_template = frappe.db.get_value("Item", meal_billing_item, "item_tax_template")
+				target.append("items", {
+					"item_code": meal_billing_item,
+					"description": _("Meal Plan: {0} — {1} person(s) × {2} night(s)").format(
+						source.meal_plan,
+						(source.num_adults or 1) + (source.num_children or 0),
+						source.total_nights,
+					),
+					"qty": 1,
+					"rate": flt(source.meal_plan_amount),
+					"bmr_reservation": source.name,
+					"item_tax_template": meal_tax_template or None,
+				})
+
+		# Transfer reservation-level discount so SI total matches
+		if flt(source.discount_amount) > 0:
+			target.additional_discount_amount = flt(source.discount_amount)
+
 		target.run_method("set_missing_values")
 		target.run_method("calculate_taxes_and_totals")
 
@@ -298,6 +358,10 @@ def make_sales_invoice(source_name, target_doc=None):
 		target_row.rate = flt(source_row.rate)
 		target_row.amount = flt(source_row.amount)
 		target_row.bmr_reservation = source_parent.name
+
+		# Apply Item Tax Template for India Compliance GST calculation
+		if source_parent.item_tax_template:
+			target_row.item_tax_template = source_parent.item_tax_template
 
 	return get_mapped_doc(
 		"Room Reservation",
@@ -370,6 +434,7 @@ def make_combined_invoice(source_name):
 				"qty": reservation.total_nights or 1,
 				"rate": flt(row.rate),
 				"bmr_reservation": source_name,
+				"item_tax_template": reservation.item_tax_template or None,
 			},
 		)
 
@@ -393,6 +458,8 @@ def make_combined_invoice(source_name):
 						"Please configure it before billing."
 					).format(item.service or _("Unknown"))
 				)
+			# Fetch tax template from the Item master (service items have their own rate)
+			svc_tax_template = frappe.db.get_value("Item", billing_item, "item_tax_template")
 			si.append(
 				"items",
 				{
@@ -401,11 +468,39 @@ def make_combined_invoice(source_name):
 					"qty": flt(item.quantity),
 					"rate": flt(item.rate),
 					"bmr_guest_folio": folio.name,
+					"item_tax_template": svc_tax_template or None,
+				},
+			)
+
+	# ── Meal plan charges ─────────────────────────────────────────────────── #
+	if flt(reservation.meal_plan_amount) > 0 and reservation.meal_plan:
+		meal_billing_item = frappe.db.get_value("Meal Plan", reservation.meal_plan, "billing_item")
+		if meal_billing_item:
+			# Food/restaurant services carry their own GST rate (typically 5%)
+			# — fetched from the meal billing Item master, NOT the hotel room template
+			meal_tax_template = frappe.db.get_value("Item", meal_billing_item, "item_tax_template")
+			si.append(
+				"items",
+				{
+					"item_code": meal_billing_item,
+					"description": _("Meal Plan: {0} — {1} person(s) × {2} night(s)").format(
+						reservation.meal_plan,
+						(reservation.num_adults or 1) + (reservation.num_children or 0),
+						reservation.total_nights,
+					),
+					"qty": 1,
+					"rate": flt(reservation.meal_plan_amount),
+					"bmr_reservation": source_name,
+					"item_tax_template": meal_tax_template or None,
 				},
 			)
 
 	if not si.get("items"):
 		frappe.throw(_("No billable charges found for this reservation."))
+
+	# Transfer reservation-level discount so SI total matches
+	if flt(reservation.discount_amount) > 0:
+		si.additional_discount_amount = flt(reservation.discount_amount)
 
 	si.bmr_reservation = source_name
 	si.run_method("set_missing_values")

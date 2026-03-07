@@ -8,16 +8,20 @@
  "engine": "InnoDB",
  "field_order": [
   "hotel_name",
+  "hotel_code",
+  "attach_image",
   "star_rating",
   "website",
   "col_break_0",
   "checkin_time",
   "checkout_time",
+  "item_tax_template",
   "tax_rate",
   "address_section",
   "address",
   "city",
   "country",
+  "maps_url",
   "contact_section",
   "phone",
   "col_break_1",
@@ -35,6 +39,13 @@
    "in_list_view": 1,
    "label": "Hotel Name",
    "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "hotel_code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Hotel Code",
    "unique": 1
   },
   {
@@ -66,7 +77,14 @@
    "label": "Default Check-out Time"
   },
   {
-   "description": "Applied automatically to all reservations at this hotel",
+   "description": "Select an Item Tax Template (e.g. GST 5%). The GST rate will be auto-filled below.",
+   "fieldname": "item_tax_template",
+   "fieldtype": "Link",
+   "label": "Item Tax Template",
+   "options": "Item Tax Template"
+  },
+  {
+   "description": "Auto-filled from the Item Tax Template. Used for reservation tax preview.",
    "fieldname": "tax_rate",
    "fieldtype": "Percent",
    "label": "Default Tax Rate (%)"
@@ -91,6 +109,13 @@
    "fieldtype": "Link",
    "label": "Country",
    "options": "Country"
+  },
+  {
+   "description": "Paste a Google Maps URL or coordinates link",
+   "fieldname": "maps_url",
+   "fieldtype": "Data",
+   "label": "Google Maps URL",
+   "options": "URL"
   },
   {
    "fieldname": "contact_section",
@@ -133,10 +158,16 @@
    "fieldname": "description",
    "fieldtype": "Text Editor",
    "label": "Description"
+  },
+  {
+   "fieldname": "attach_image",
+   "fieldtype": "Attach Image",
+   "label": "Image"
   }
  ],
+ "image_field": "attach_image",
  "links": [],
- "modified": "2026-03-01 19:57:58.875438",
+ "modified": "2026-03-07 11:27:07.038357",
  "modified_by": "Administrator",
  "module": "Book My Room",
  "name": "Hotel",

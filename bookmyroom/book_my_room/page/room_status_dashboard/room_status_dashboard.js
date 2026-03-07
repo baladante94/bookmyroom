@@ -106,13 +106,20 @@ frappe.pages["room-status-dashboard"].on_page_load = function (wrapper) {
 function _render_stats($el, rooms) {
 	const counts = {
 		Available: 0,
-		Occupied: 0,
+		Reserved: 0,
+		"Checked In": 0,
 		"Vacant": 0,
 		"Out of Order": 0,
 		Maintenance: 0,
 	};
 	rooms.forEach((r) => {
-		if (counts[r.status] !== undefined) counts[r.status]++;
+		if (r.reservation && r.reservation.status === "Booked") {
+			counts["Reserved"]++;
+		} else if (r.reservation && r.reservation.status === "Checked In") {
+			counts["Checked In"]++;
+		} else if (counts[r.status] !== undefined) {
+			counts[r.status]++;
+		}
 	});
 
 	$el.append(`
@@ -121,9 +128,13 @@ function _render_stats($el, rooms) {
 				<div class="bmr-stat-count">${counts["Available"]}</div>
 				<div class="bmr-stat-label">${__("Available")}</div>
 			</div>
+			<div class="bmr-stat st-reserved">
+				<div class="bmr-stat-count">${counts["Reserved"]}</div>
+				<div class="bmr-stat-label">${__("Reserved")}</div>
+			</div>
 			<div class="bmr-stat st-occupied">
-				<div class="bmr-stat-count">${counts["Occupied"]}</div>
-				<div class="bmr-stat-label">${__("Occupied")}</div>
+				<div class="bmr-stat-count">${counts["Checked In"]}</div>
+				<div class="bmr-stat-label">${__("Checked In")}</div>
 			</div>
 			<div class="bmr-stat st-vacant-dirty">
 				<div class="bmr-stat-count">${counts["Vacant"]}</div>
@@ -145,7 +156,12 @@ function _render_stats($el, rooms) {
 	`);
 }
 
-function _status_class(status) {
+function _status_class(room) {
+	// Distinguish Booked (reserved, not yet checked in) from Checked In (occupied)
+	if (room.reservation) {
+		if (room.reservation.status === "Booked") return "st-reserved";
+		if (room.reservation.status === "Checked In") return "st-occupied";
+	}
 	return (
 		{
 			Available: "st-available",
@@ -153,7 +169,7 @@ function _status_class(status) {
 			"Vacant": "st-vacant-dirty",
 			"Out of Order": "st-oor",
 			Maintenance: "st-maintenance",
-		}[status] || "st-default"
+		}[room.status] || "st-default"
 	);
 }
 
@@ -163,7 +179,7 @@ function _render_grid($el, rooms) {
 	const $grid = $('<div class="bmr-grid"></div>');
 
 	rooms.forEach((room) => {
-		const cls = _status_class(room.status);
+		const cls = _status_class(room);
 		const res = room.reservation;
 		const hk = room.housekeeping_status ? `<div class="bmr-card-hk">${frappe.utils.escape_html(room.housekeeping_status)}</div>` : "";
 		const guest = res ? `<div class="bmr-card-guest">${frappe.utils.escape_html(res.customer)}</div>` : "";
@@ -217,7 +233,7 @@ function _render_calendar($el, rooms, cal_data, m) {
 		for (let d = 1; d <= days_in_month; d++) {
 			const date = m.clone().date(d).format("YYYY-MM-DD");
 			const res = reservations.find((r) => {
-				return r.check_in.split(" ")[0] <= date && r.check_out.split(" ")[0] > date;
+				return r.check_in.split(" ")[0] <= date && r.check_out.split(" ")[0] >= date;
 			});
 
 			let td_cls = "";
@@ -252,10 +268,11 @@ function _render_calendar($el, rooms, cal_data, m) {
 
 	const legend = `
 		<div class="bmr-cal-legend">
-			<span class="bmr-legend-dot" style="background:#2196F3"></span>${__("Booked")} &nbsp;
+			<span class="bmr-legend-dot" style="background:#4caf50"></span>${__("Available")} &nbsp;
+			<span class="bmr-legend-dot" style="background:#2196F3"></span>${__("Booked / Reserved")} &nbsp;
 			<span class="bmr-legend-dot" style="background:#f44336"></span>${__("Checked In")} &nbsp;
-			<span class="bmr-legend-dot" style="background:#ff9800"></span>${__("Vacant")} &nbsp;
-			<span class="bmr-legend-dot" style="background:#bdbdbd"></span>${__("Out of Order")}
+			<span class="bmr-legend-dot" style="background:#ff9800"></span>${__("Vacant (Dirty)")} &nbsp;
+			<span class="bmr-legend-dot" style="background:#9e9e9e"></span>${__("Out of Order")}
 		</div>`;
 
 	$el.append(`
@@ -290,6 +307,7 @@ function _inject_styles() {
 		.bmr-stat-count { font-size:30px; font-weight:700; line-height:1.1; }
 		.bmr-stat-label { font-size:11px; text-transform:uppercase; opacity:.9; margin-top:2px; }
 		.st-available  { background:#4caf50; }
+		.st-reserved   { background:#2196F3; }
 		.st-occupied   { background:#f44336; }
 		.st-vacant-dirty { background:#ff9800; }
 		.st-oor        { background:#9e9e9e; }
