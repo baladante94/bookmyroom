@@ -6,6 +6,7 @@ const _drag   = { active: false, room: null, startDay: 0, endDay: 0, hotel: null
 const _move   = { active: false, resName: null, room: null, targetRoom: null };
 const _resize = { active: false, resName: null, room: null, ciDay: 1, coDay: 1, newCoDay: null };
 const _tipData = {}; // keyed by "roomName_day"
+let _bmr_refresh = null; // set on page load for callbacks
 
 frappe.pages["room-status-dashboard"].on_page_load = function (wrapper) {
 	const page = frappe.ui.make_app_page({
@@ -87,6 +88,7 @@ frappe.pages["room-status-dashboard"].on_page_load = function (wrapper) {
 						_render_room_chips($root, collected.grid || []);
 						_render_matrix($root, collected.cal || [], collected.grid || [], calMonth);
 						_render_charts($root, collected.trend || [], collected.grid || []);
+			_bmr_refresh = () => dash.refresh();
 					} catch (e) {
 						console.error("BMR render error", e);
 						$root.html(`<div class="bmr-empty">Render error — see browser console.</div>`);
@@ -386,9 +388,12 @@ function _render_hk_board($container, hk) {
 		if (filters.indexOf(s) === -1) filters.push(s);
 	});
 
+	const statusCounts = {};
+	hk.forEach(function(r) { const s = r.hk_status || "Clean"; statusCounts[s] = (statusCounts[s] || 0) + 1; });
 	const filterBtns = filters.map(function (s) {
-		const fc = FILTER_COLORS[s] || "#4f46e5";
-		return `<button class="bmr-hkb-filter${s === "All" ? " active" : ""}" data-filter="${s}" style="--fc:${fc}">${s}</button>`;
+		const fc    = FILTER_COLORS[s] || "#4f46e5";
+		const count = s === "All" ? hk.length : (statusCounts[s] || 0);
+		return `<button class="bmr-hkb-filter${s === "All" ? " active" : ""}" data-filter="${s}" style="--fc:${fc}">${s} <span class="bmr-hkb-fcount">(${count})</span></button>`;
 	}).join("");
 
 	const rows = hk.map(function (r) {
@@ -715,15 +720,22 @@ function _render_arrivals_departures($root, data) {
 	const arrivals   = (data && data.arrivals)   || [];
 	const departures = (data && data.departures) || [];
 
-	function _list_html(items, emptyMsg) {
+	function _list_html(items, emptyMsg, isArrival) {
 		if (!items.length) return `<div class="bmr-ad-empty">${emptyMsg}</div>`;
 		return items.map(function (r) {
 			const rooms  = r.rooms && r.rooms.length ? r.rooms.join(", ") : "—";
 			const stCls  = r.status === "Checked In" ? "bmr-tip-ci" : r.status === "Checked Out" ? "bmr-tip-co" : "bmr-tip-bk";
+			let actionBtn = "";
+			if (isArrival && r.status === "Booked") {
+				actionBtn = `<button class="bmr-ad-action-btn bmr-ad-checkin" data-res="${r.name}">Check-in</button>`;
+			} else if (!isArrival && r.status === "Checked In") {
+				actionBtn = `<button class="bmr-ad-action-btn bmr-ad-checkout" data-res="${r.name}">Checkout</button>`;
+			}
 			return `<div class="bmr-ad-row" data-res="${r.name}">
 				<div class="bmr-ad-rooms">${frappe.utils.escape_html(rooms)}</div>
 				<div class="bmr-ad-customer">${frappe.utils.escape_html(r.customer)}</div>
 				<span class="bmr-tip-badge ${stCls}">${r.status}</span>
+				${actionBtn}
 			</div>`;
 		}).join("");
 	}
@@ -736,21 +748,48 @@ function _render_arrivals_departures($root, data) {
 					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
 					Arrivals (${arrivals.length})
 				</div>
-				<div class="bmr-ad-list">${_list_html(arrivals, "No arrivals today")}</div>
+				<div class="bmr-ad-list">${_list_html(arrivals, "No arrivals today", true)}</div>
 			</div>
 			<div class="bmr-ad-panel">
 				<div class="bmr-ad-title">
 					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
 					Departures (${departures.length})
 				</div>
-				<div class="bmr-ad-list">${_list_html(departures, "No departures today")}</div>
+				<div class="bmr-ad-list">${_list_html(departures, "No departures today", false)}</div>
 			</div>
 		</div>
 	`);
 
-	$root.find(".bmr-ad-row").on("click", function () {
+	$root.find(".bmr-ad-row").on("click", function (e) {
+		if ($(e.target).closest(".bmr-ad-action-btn").length) return;
 		const res = $(this).data("res");
 		if (res) frappe.set_route("Form", "Room Reservation", res);
+	});
+
+	function _do_quick_action(method, reservation, $btn, label) {
+		$btn.prop("disabled", true).text("...");
+		frappe.call({
+			method: "bookmyroom.book_my_room.page.room_status_dashboard.room_status_dashboard." + method,
+			args: { reservation },
+			callback: function(r) {
+				if (r.message && r.message.ok) {
+					frappe.show_alert({ message: label + " successful", indicator: "green" });
+					_bmr_refresh && _bmr_refresh();
+				} else {
+					frappe.show_alert({ message: (r.message && r.message.error) || "Action failed", indicator: "red" });
+					$btn.prop("disabled", false).text(label);
+				}
+			},
+		});
+	}
+
+	$root.find(".bmr-ad-checkin").on("click", function (e) {
+		e.stopPropagation();
+		_do_quick_action("quick_checkin", $(this).data("res"), $(this), "Check-in");
+	});
+	$root.find(".bmr-ad-checkout").on("click", function (e) {
+		e.stopPropagation();
+		_do_quick_action("quick_checkout", $(this).data("res"), $(this), "Checkout");
 	});
 }
 
@@ -938,16 +977,16 @@ function _inject_styles() {
 .ch-mn.bmr-leg-dot{background:#7c3aed}
 
 /* Matrix Calendar */
-.bmr-m-wrap{overflow-x:auto;border-radius:12px;border:1px solid #e2e8f0;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.bmr-m-wrap{overflow:auto;max-height:520px;border-radius:12px;border:1px solid #e2e8f0;box-shadow:0 2px 8px rgba(0,0,0,.06)}
 .bmr-matrix{border-collapse:separate;border-spacing:0;font-size:11px;background:#fff;width:max-content;min-width:100%}
 .bmr-matrix th{background:#f1f5f9;border-bottom:2px solid #dde4f0;border-right:1px solid #e8edf4;padding:6px 2px 4px;text-align:center;min-width:32px;height:40px;font-weight:600;color:#64748b;position:sticky;top:0;z-index:2}
 .bmr-matrix td{border-bottom:1px solid #f0f4fa;border-right:1px solid #f0f4fa;padding:0;text-align:center;min-width:32px;height:34px;position:relative}
-.bmr-m-room-th{min-width:96px!important;text-align:left!important;padding:0 10px!important;position:sticky!important;left:0!important;z-index:4!important;background:#f1f5f9!important}
+.bmr-m-room-th{min-width:96px!important;text-align:left!important;padding:0 10px!important;position:sticky!important;top:0!important;left:0!important;z-index:5!important;background:#f1f5f9!important}
 .bmr-m-room-cell{min-width:96px!important;text-align:left!important;padding:0 10px!important;font-weight:700!important;font-size:11px!important;color:#1e293b!important;background:#f8fafc!important;position:sticky!important;left:0!important;z-index:1!important;white-space:nowrap!important;border-right:2px solid #dde4f0!important}
 .bmr-matrix tbody tr:hover .bmr-m-room-cell{background:#eef2ff!important}
 .bmr-wkend{background:#f5f5f7!important}
 .bmr-today-col{background:#eff6ff!important}
-th.bmr-today-col{background:linear-gradient(180deg,#eff6ff,#dbeafe)!important;color:#1d4ed8!important;font-weight:800!important}
+th.bmr-today-col{background:linear-gradient(180deg,#dbeafe,#eff6ff)!important;color:#1d4ed8!important;font-weight:800!important;border-top:3px solid #3b82f6!important}
 .bmr-day-num{display:block;font-size:12px;font-weight:700;line-height:1.1}
 .bmr-day-name{display:block;font-size:9px;opacity:.7}
 
@@ -1010,6 +1049,13 @@ th.bmr-today-col{background:linear-gradient(180deg,#eff6ff,#dbeafe)!important;co
 .bmr-ad-rooms{font-size:11px;font-weight:700;color:#1e293b;min-width:55px;white-space:nowrap}
 .bmr-ad-customer{flex:1;font-size:12px;color:#475569;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bmr-ad-empty{padding:28px 16px;text-align:center;color:#94a3b8;font-size:12px}
+.bmr-ad-action-btn{flex-shrink:0;padding:3px 12px;border-radius:20px;border:none;cursor:pointer;font-size:11px;font-weight:700;transition:all .12s;white-space:nowrap}
+.bmr-ad-checkin{background:#4f46e5;color:#fff}
+.bmr-ad-checkin:hover{background:#3730a3}
+.bmr-ad-checkout{background:#10b981;color:#fff}
+.bmr-ad-checkout:hover{background:#059669}
+.bmr-ad-action-btn:disabled{opacity:.5;cursor:default}
+.bmr-hkb-fcount{font-weight:500;opacity:.75}
 
 /* Charts */
 .bmr-charts-row{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:28px}

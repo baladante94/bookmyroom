@@ -395,3 +395,38 @@ def quick_update_reservation(reservation, check_out=None, new_room=None, old_roo
 
 	frappe.db.commit()
 	return True
+
+
+@frappe.whitelist()
+def quick_checkin(reservation):
+	"""Quick check-in from the dashboard without opening the form."""
+	res = frappe.get_doc("Room Reservation", reservation)
+	if res.status != "Booked":
+		return {"error": "Cannot check in: status is {}".format(res.status)}
+	frappe.db.set_value("Room Reservation", reservation, "status", "Checked In")
+	items = frappe.get_all("Room Reservation Item",
+		filters={"parent": reservation}, fields=["room"])
+	for item in items:
+		if item.room:
+			frappe.db.set_value("Room", item.room, "status", "Occupied")
+	frappe.db.commit()
+	return {"ok": True}
+
+
+@frappe.whitelist()
+def quick_checkout(reservation):
+	"""Quick checkout from the dashboard without opening the form."""
+	res = frappe.get_doc("Room Reservation", reservation)
+	if res.status != "Checked In":
+		return {"error": "Cannot check out: status is {}".format(res.status)}
+	frappe.db.set_value("Room Reservation", reservation, "status", "Checked Out")
+	items = frappe.get_all("Room Reservation Item",
+		filters={"parent": reservation}, fields=["room"])
+	for item in items:
+		if item.room:
+			frappe.db.set_value("Room", item.room, {
+				"status": "Vacant",
+				"housekeeping_status": "Dirty",
+			})
+	frappe.db.commit()
+	return {"ok": True}
