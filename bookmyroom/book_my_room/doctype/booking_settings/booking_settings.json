@@ -5,6 +5,9 @@
  "engine": "InnoDB",
  "field_order": [
   "block_backdated_booking",
+  "tax_config_section",
+  "tax_config_help",
+  "tax_slabs",
   "billing_items_section",
   "billing_items_imported",
   "setup_billing_items_btn"
@@ -16,6 +19,23 @@
    "fieldname": "block_backdated_booking",
    "fieldtype": "Check",
    "label": "Block Backdated Booking"
+  },
+  {
+   "fieldname": "tax_config_section",
+   "fieldtype": "Section Break",
+   "label": "Room Tax Configuration"
+  },
+  {
+   "fieldname": "tax_config_help",
+   "fieldtype": "HTML",
+   "label": "Tax Config Help",
+   "options": "<div class=\"alert alert-info\" style=\"font-size:12px;margin-bottom:8px\">Define GST slabs for room accommodation. The reservation picks the matching slab based on the average room rate per night.<br><strong>Max Tariff = 0</strong> means no upper limit (highest slab). Leave the Item Tax Template blank for an exempt slab.</div>"
+  },
+  {
+   "fieldname": "tax_slabs",
+   "fieldtype": "Table",
+   "label": "Tax Slabs",
+   "options": "Room Tax Slab"
   },
   {
    "fieldname": "billing_items_section",
@@ -32,7 +52,7 @@
   },
   {
    "depends_on": "eval:!doc.billing_items_imported",
-   "description": "Creates 16 standard hotel billing items with SAC codes and GST rates. This action cannot be undone — items must be deleted manually if no longer needed.",
+   "description": "Creates standard hotel billing items with SAC codes and GST rates. This action cannot be undone — items must be deleted manually if no longer needed.",
    "fieldname": "setup_billing_items_btn",
    "fieldtype": "Button",
    "label": "Import Standard Billing Items"
@@ -40,7 +60,7 @@
  ],
  "issingle": 1,
  "links": [],
- "modified": "2026-03-07 12:00:00.000000",
+ "modified": "2026-03-07 13:00:00.000000",
  "modified_by": "Administrator",
  "module": "Book My Room",
  "name": "Booking Settings",

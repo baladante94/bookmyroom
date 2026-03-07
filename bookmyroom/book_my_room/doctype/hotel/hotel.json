@@ -15,8 +15,6 @@
   "col_break_0",
   "checkin_time",
   "checkout_time",
-  "item_tax_template",
-  "tax_rate",
   "address_section",
   "address",
   "city",
@@ -75,19 +73,6 @@
    "fieldname": "checkout_time",
    "fieldtype": "Time",
    "label": "Default Check-out Time"
-  },
-  {
-   "description": "Select an Item Tax Template (e.g. GST 5%). The GST rate will be auto-filled below.",
-   "fieldname": "item_tax_template",
-   "fieldtype": "Link",
-   "label": "Item Tax Template",
-   "options": "Item Tax Template"
-  },
-  {
-   "description": "Auto-filled from the Item Tax Template. Used for reservation tax preview.",
-   "fieldname": "tax_rate",
-   "fieldtype": "Percent",
-   "label": "Default Tax Rate (%)"
   },
   {
    "fieldname": "address_section",

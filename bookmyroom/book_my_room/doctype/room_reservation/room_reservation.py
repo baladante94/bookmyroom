@@ -119,39 +119,12 @@ class RoomReservation(Document):
 		self.balance_due = flt(self.grand_total) - flt(self.advance_amount or 0)
 
 	def _get_tax_rate(self):
-		"""Return (tax_rate_pct, description).
-
-		Priority:
-		1. Hotel's Item Tax Template → gst_rate field
-		2. Hotel's flat tax_rate
-		3. Auto GST slab from avg room rate
-		"""
-		# 1. Item Tax Template (India Compliance)
-		template = self.item_tax_template or (
-			frappe.db.get_value("Hotel", self.hotel, "item_tax_template") if self.hotel else None
-		)
-		if template:
-			gst_rate = frappe.db.get_value("Item Tax Template", template, "gst_rate") or 0
-			if flt(gst_rate) > 0:
-				return flt(gst_rate), _("GST {0}% ({1})").format(flt(gst_rate), template)
-
-		# 2. Hotel flat tax rate
-		if self.hotel:
-			hotel_tax = frappe.db.get_value("Hotel", self.hotel, "tax_rate") or 0
-			if flt(hotel_tax) > 0:
-				return flt(hotel_tax), _("Tax {0}%").format(flt(hotel_tax))
-
-		# 3. Auto GST slab (Indian hotel tariff rules)
+		"""Return (tax_rate_pct, description) from configured tax slabs in Booking Settings."""
 		rates = [flt(row.rate) for row in self.get("items") if flt(row.rate) > 0]
 		if not rates:
 			return 0.0, ""
 		avg_rate = sum(rates) / len(rates)
-		if avg_rate <= 1000:
-			return 0.0, _("GST Exempt (tariff ≤ ₹1,000/night)")
-		elif avg_rate <= 7500:
-			return 5.0, _("GST 5% (tariff ₹1,001–₹7,500/night)")
-		else:
-			return 18.0, _("GST 18% (tariff > ₹7,500/night)")
+		return _tax_rate_for_tariff(avg_rate)
 
 	def validate_overlapping_bookings(self):
 		"""
@@ -280,6 +253,70 @@ class RoomReservation(Document):
 # ------------------------------------------------------------------ #
 
 
+def _get_item_tax_template(item_code):
+	"""Return the first Item Tax Template assigned to an Item (via its Item Tax child table)."""
+	if not item_code:
+		return None
+	return frappe.db.get_value(
+		"Item Tax",
+		{"parent": item_code, "parenttype": "Item"},
+		"item_tax_template",
+	)
+
+
+def _get_tax_slabs():
+	"""Return configured room tax slabs from Booking Settings, ordered by min_tariff."""
+	return frappe.get_all(
+		"Room Tax Slab",
+		filters={"parent": "Booking Settings"},
+		fields=["min_tariff", "max_tariff", "item_tax_template", "tax_rate"],
+		order_by="min_tariff asc",
+	)
+
+
+def _tax_rate_for_tariff(rate_per_night):
+	"""Return (tax_rate_pct, description) for a given room tariff using configured slabs.
+
+	Falls back to Indian GST accommodation slabs (0%/12%/18%) if no slabs are configured.
+	"""
+	slabs = _get_tax_slabs()
+	rate = flt(rate_per_night)
+
+	if slabs:
+		for slab in slabs:
+			min_t = flt(slab.min_tariff)
+			max_t = flt(slab.max_tariff)
+			if rate >= min_t and (max_t == 0 or rate <= max_t):
+				tax_rate = flt(slab.tax_rate)
+				template = slab.item_tax_template
+				if tax_rate == 0:
+					return 0.0, _("GST Exempt")
+				if template:
+					return tax_rate, _("GST {0}% ({1})").format(tax_rate, template)
+				return tax_rate, _("Tax {0}%").format(tax_rate)
+		return 0.0, ""
+
+	# Hardcoded Indian hotel GST fallback when no slabs configured
+	if rate <= 1000:
+		return 0.0, _("GST Exempt (tariff ≤ ₹1,000/night)")
+	elif rate <= 7500:
+		return 12.0, _("GST 12% (tariff ₹1,001–₹7,500/night)")
+	else:
+		return 18.0, _("GST 18% (tariff > ₹7,500/night)")
+
+
+def _get_room_tax_template_for_rate(rate_per_night):
+	"""Return the item_tax_template for a given room rate from configured tax slabs."""
+	slabs = _get_tax_slabs()
+	rate = flt(rate_per_night)
+	for slab in slabs:
+		min_t = flt(slab.min_tariff)
+		max_t = flt(slab.max_tariff)
+		if rate >= min_t and (max_t == 0 or rate <= max_t):
+			return slab.item_tax_template or None
+	return None
+
+
 def _check_no_submitted_invoice(reservation_name):
 	"""Raise ValidationError if a submitted Sales Invoice already exists for this reservation."""
 	existing = frappe.get_all(
@@ -316,7 +353,7 @@ def make_sales_invoice(source_name, target_doc=None):
 		if flt(source.meal_plan_amount) > 0 and source.meal_plan:
 			meal_billing_item = frappe.db.get_value("Meal Plan", source.meal_plan, "billing_item")
 			if meal_billing_item:
-				meal_tax_template = frappe.db.get_value("Item", meal_billing_item, "item_tax_template")
+				meal_tax_template = _get_item_tax_template(meal_billing_item)
 				target.append("items", {
 					"item_code": meal_billing_item,
 					"description": _("Meal Plan: {0} — {1} person(s) × {2} night(s)").format(
@@ -359,9 +396,10 @@ def make_sales_invoice(source_name, target_doc=None):
 		target_row.amount = flt(source_row.amount)
 		target_row.bmr_reservation = source_parent.name
 
-		# Apply Item Tax Template for India Compliance GST calculation
-		if source_parent.item_tax_template:
-			target_row.item_tax_template = source_parent.item_tax_template
+		# Apply Item Tax Template per room rate from configured tax slabs
+		tax_template = _get_room_tax_template_for_rate(source_row.rate)
+		if tax_template:
+			target_row.item_tax_template = tax_template
 
 	return get_mapped_doc(
 		"Room Reservation",
@@ -434,7 +472,7 @@ def make_combined_invoice(source_name):
 				"qty": reservation.total_nights or 1,
 				"rate": flt(row.rate),
 				"bmr_reservation": source_name,
-				"item_tax_template": reservation.item_tax_template or None,
+				"item_tax_template": _get_room_tax_template_for_rate(flt(row.rate)),
 			},
 		)
 
@@ -459,7 +497,7 @@ def make_combined_invoice(source_name):
 					).format(item.service or _("Unknown"))
 				)
 			# Fetch tax template from the Item master (service items have their own rate)
-			svc_tax_template = frappe.db.get_value("Item", billing_item, "item_tax_template")
+			svc_tax_template = _get_item_tax_template(billing_item)
 			si.append(
 				"items",
 				{
@@ -477,8 +515,8 @@ def make_combined_invoice(source_name):
 		meal_billing_item = frappe.db.get_value("Meal Plan", reservation.meal_plan, "billing_item")
 		if meal_billing_item:
 			# Food/restaurant services carry their own GST rate (typically 5%)
-			# — fetched from the meal billing Item master, NOT the hotel room template
-			meal_tax_template = frappe.db.get_value("Item", meal_billing_item, "item_tax_template")
+			# — fetched from the Item Tax child table, NOT the hotel room template
+			meal_tax_template = _get_item_tax_template(meal_billing_item)
 			si.append(
 				"items",
 				{

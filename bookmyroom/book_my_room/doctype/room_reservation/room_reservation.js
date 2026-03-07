@@ -5,7 +5,6 @@
 // State cached per-form to avoid redundant server fetches
 // ─────────────────────────────────────────────────────────────────────────────
 let _mealPlanRate = 0; // extra rate per person per night
-let _taxRate = 0; // hotel tax %
 
 frappe.ui.form.on("Room Reservation", {
 	// ── Setup ──────────────────────────────────────────────────────────────── //
@@ -19,6 +18,7 @@ frappe.ui.form.on("Room Reservation", {
 	refresh(frm) {
 		_refreshActionButtons(frm);
 		_updateBalanceColor(frm);
+		_loadTaxSlabs(frm);
 
 		// Pre-fill room from dashboard click (window._bmr_prefill_room set by workspace grid)
 		if (frm.is_new() && window._bmr_prefill_room) {
@@ -42,34 +42,20 @@ frappe.ui.form.on("Room Reservation", {
 	hotel(frm) {
 		_set_room_query(frm);
 		if (!frm.doc.hotel) {
-			_taxRate = 0;
 			frm.trigger("calculate_totals");
 			return;
 		}
-		// Fetch tax rate + default check-in/out times together
+		// Fetch default check-in/out times from Hotel
 		frappe.db
-			.get_value("Hotel", frm.doc.hotel, ["tax_rate", "checkin_time", "checkout_time"])
+			.get_value("Hotel", frm.doc.hotel, ["checkin_time", "checkout_time"])
 			.then(({ message }) => {
-				_taxRate = flt(message?.tax_rate);
-
-				// Always apply hotel's default times.
-				// Preserve the DATE the user (or dashboard route_options) already set;
-				// replace only the TIME portion.
 				const cin_time = message?.checkin_time || "14:00:00";
 				const cout_time = message?.checkout_time || "12:00:00";
 				const today = frappe.datetime.get_today();
 				const tomorrow = frappe.datetime.add_days(today, 1);
-				const cin_date = frm.doc.check_in
-					? frm.doc.check_in.split(" ")[0]
-					: today;
-				const cout_date = frm.doc.check_out
-					? frm.doc.check_out.split(" ")[0]
-					: tomorrow;
+				const cin_date = frm.doc.check_in ? frm.doc.check_in.split(" ")[0] : today;
+				const cout_date = frm.doc.check_out ? frm.doc.check_out.split(" ")[0] : tomorrow;
 
-				// Must use frm.set_value() — this calls datepicker.selectDate() internally
-				// so Air Datepicker's selectedDates array is populated.  If we set
-				// frm.doc.field directly the picker has no selected date and shows blank
-				// the next time the user clicks the field.
 				_set_datetime_with_picker(frm, "check_in", cin_date + " " + cin_time);
 				_set_datetime_with_picker(frm, "check_out", cout_date + " " + cout_time);
 
@@ -168,23 +154,30 @@ frappe.ui.form.on("Room Reservation", {
 		frm.set_value("discount_amount", discount_amount);
 		const after_discount = subtotal - discount_amount;
 
-		// Tax — use hotel rate if set, else GST slab
-		let tax_rate = _taxRate;
+		// Tax — look up configured slab from Booking Settings (cached in frm._taxSlabs)
+		let tax_rate = 0;
 		let tax_desc = "";
-		if (tax_rate > 0) {
-			tax_desc = __("Tax {0}%", [tax_rate]);
-		} else {
-			// GST slab auto-detect from avg room rate
-			const rates = (frm.doc.items || []).map((r) => flt(r.rate)).filter((r) => r > 0);
-			if (rates.length) {
-				const avg = rates.reduce((a, b) => a + b, 0) / rates.length;
-				if (avg <= 1000) {
-					tax_rate = 0; tax_desc = __("GST Exempt (tariff ≤ ₹1,000/night)");
-				} else if (avg <= 7500) {
-					tax_rate = 5; tax_desc = __("GST 5% (tariff ₹1,001–₹7,500/night)");
-				} else {
-					tax_rate = 18; tax_desc = __("GST 18% (tariff > ₹7,500/night)");
-				}
+		const rates = (frm.doc.items || []).map((r) => flt(r.rate)).filter((r) => r > 0);
+		if (rates.length) {
+			const avg = rates.reduce((a, b) => a + b, 0) / rates.length;
+			const slabs = frm._taxSlabs || [];
+			const match = slabs.find((s) => {
+				const min = flt(s.min_tariff);
+				const max = flt(s.max_tariff);
+				return avg >= min && (max === 0 || avg <= max);
+			});
+			if (match) {
+				tax_rate = flt(match.tax_rate);
+				tax_desc = tax_rate === 0
+					? __("GST Exempt")
+					: match.item_tax_template
+						? __("GST {0}% ({1})", [tax_rate, match.item_tax_template])
+						: __("Tax {0}%", [tax_rate]);
+			} else if (!slabs.length) {
+				// Fallback if slabs not yet configured
+				if (avg <= 1000) { tax_rate = 0; tax_desc = __("GST Exempt"); }
+				else if (avg <= 7500) { tax_rate = 12; tax_desc = __("GST 12%"); }
+				else { tax_rate = 18; tax_desc = __("GST 18%"); }
 			}
 		}
 		const tax_amount = flt((after_discount * tax_rate) / 100);
@@ -303,6 +296,19 @@ frappe.ui.form.on("Room Reservation Item", {
 // ─────────────────────────────────────────────────────────────────────────────
 // Private helpers
 // ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Fetch room tax slabs from Booking Settings and cache on frm._taxSlabs.
+ * Called once on refresh; slabs rarely change during a session.
+ */
+function _loadTaxSlabs(frm) {
+	frappe.call({
+		method: "bookmyroom.book_my_room.doctype.booking_settings.booking_settings.get_tax_slabs",
+		callback({ message }) {
+			frm._taxSlabs = message || [];
+		},
+	});
+}
 
 /**
  * Set (or refresh) the room search query on the items child table.

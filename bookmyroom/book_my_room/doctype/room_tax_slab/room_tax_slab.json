@@ -1,0 +1,55 @@
+{
+ "actions": [],
+ "creation": "2026-03-07 13:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "min_tariff",
+  "max_tariff",
+  "item_tax_template",
+  "tax_rate"
+ ],
+ "fields": [
+  {
+   "default": "0",
+   "fieldname": "min_tariff",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Min Tariff (₹/night)",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "description": "Set to 0 for the highest slab (no upper limit)",
+   "fieldname": "max_tariff",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Max Tariff (₹/night)"
+  },
+  {
+   "fieldname": "item_tax_template",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item Tax Template",
+   "options": "Item Tax Template"
+  },
+  {
+   "fieldname": "tax_rate",
+   "fieldtype": "Percent",
+   "in_list_view": 1,
+   "label": "Tax Rate (%)",
+   "read_only": 1
+  }
+ ],
+ "istable": 1,
+ "links": [],
+ "modified": "2026-03-07 13:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Book My Room",
+ "name": "Room Tax Slab",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC"
+}

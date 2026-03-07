@@ -22,6 +22,17 @@ def get_booking_settings():
 
 
 @frappe.whitelist()
+def get_tax_slabs():
+	"""Return configured room tax slabs ordered by min tariff."""
+	return frappe.get_all(
+		"Room Tax Slab",
+		filters={"parent": "Booking Settings"},
+		fields=["min_tariff", "max_tariff", "item_tax_template", "tax_rate"],
+		order_by="min_tariff asc",
+	)
+
+
+@frappe.whitelist()
 def setup_standard_billing_items():
 	"""Create standard hotel billing items. One-time action triggered from Booking Settings."""
 	if frappe.db.get_single_value("Booking Settings", "billing_items_imported"):

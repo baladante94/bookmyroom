@@ -38,7 +38,6 @@
   "discount_amount",
   "tax_amount",
   "tax_description",
-  "item_tax_template",
   "grand_total",
   "balance_due",
   "additional_section",
@@ -246,15 +245,6 @@
    "fieldname": "tax_description",
    "fieldtype": "Data",
    "label": "Tax Applied",
-   "read_only": 1
-  },
-  {
-   "fetch_from": "hotel.item_tax_template",
-   "fetch_if_empty": 0,
-   "fieldname": "item_tax_template",
-   "fieldtype": "Link",
-   "label": "Item Tax Template",
-   "options": "Item Tax Template",
    "read_only": 1
   },
   {

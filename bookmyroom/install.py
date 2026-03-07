@@ -63,11 +63,13 @@ BMR_CUSTOM_FIELDS = {
 def after_install():
 	setup_custom_fields()
 	setup_item_groups()
+	setup_tax_slabs()
 
 
 def after_migrate():
 	setup_custom_fields()
 	setup_item_groups()
+	setup_tax_slabs()
 
 
 def setup_custom_fields():
@@ -84,10 +86,10 @@ def setup_custom_fields():
 # Item group hierarchy (created automatically on install/migrate)
 # All Item Groups
 #   └─ Hotel Services
-#        ├─ Accommodation      (SAC 996311 — room charges)
-#        ├─ Food & Beverage    (SAC 996331 — meal plans, room service)
-#        ├─ Guest Services     (laundry, telephone, parking)
-#        └─ Recreation & Wellness (spa, gym, pool)
+#        ├─ Accommodation      (SAC 996311 — room charges, GST 0%/12%/18% by tariff slab)
+#        ├─ Food & Beverage    (SAC 996331 — meal plans, room service, GST 5%)
+#        ├─ Guest Services     (laundry, telephone, parking, GST 18%)
+#        └─ Recreation & Wellness (spa, gym, pool, GST 18%)
 
 _ITEM_GROUPS = [
 	{"name": "Hotel Services",        "parent": "All Item Groups", "is_group": 1},
@@ -100,11 +102,13 @@ _ITEM_GROUPS = [
 # Standard billing items (imported on-demand via Booking Settings)
 # (item_code, item_name, item_group, uom, gst_hsn_code, gst_rate)
 STANDARD_ITEMS = [
-	# Accommodation — SAC 996311, 18%
-	("room-charge",      "Room Charge",            "Accommodation",        "Night", "996311", 18),
-	("early-checkin",    "Early Check-in Charge",  "Accommodation",        "Nos",   "996311", 18),
-	("late-checkout",    "Late Check-out Charge",  "Accommodation",        "Nos",   "996311", 18),
-	("extra-bed",        "Extra Bed Charge",       "Accommodation",        "Night", "996311", 18),
+	# Accommodation — SAC 996311
+	# GST 12% for tariff ₹1,001–₹7,500/night; 18% for tariff above ₹7,500/night
+	("room-charge",      "Room Charge",            "Accommodation",        "Night", "996311", 12),
+	("room-charge-lux",  "Room Charge (Luxury)",   "Accommodation",        "Night", "996311", 18),
+	("early-checkin",    "Early Check-in Charge",  "Accommodation",        "Nos",   "996311", 12),
+	("late-checkout",    "Late Check-out Charge",  "Accommodation",        "Nos",   "996311", 12),
+	("extra-bed",        "Extra Bed Charge",       "Accommodation",        "Night", "996311", 12),
 
 	# Food & Beverage — SAC 996331, 5%
 	("meal-plan-cp",     "Breakfast (CP)",         "Food & Beverage",      "Nos",   "996331", 5),
@@ -152,6 +156,32 @@ def setup_item_groups():
 		).insert(ignore_permissions=True)
 		print(f"  [ok]  Created Item Group: {grp['name']}")
 	frappe.db.commit()
+
+
+def setup_tax_slabs():
+	"""Seed default Indian GST accommodation slabs if none are configured yet."""
+	if frappe.db.count("Room Tax Slab", {"parent": "Booking Settings"}):
+		return  # already configured
+
+	gst_12 = _get_tax_template_by_rate(12)
+	gst_18 = _get_tax_template_by_rate(18)
+
+	settings = frappe.get_doc("Booking Settings")
+	# Slab 1: exempt (tariff ≤ ₹1,000)
+	settings.append("tax_slabs", {"min_tariff": 0, "max_tariff": 1000, "tax_rate": 0})
+	# Slab 2: 12% (₹1,001–₹7,500)
+	settings.append(
+		"tax_slabs",
+		{"min_tariff": 1001, "max_tariff": 7500, "item_tax_template": gst_12, "tax_rate": 12},
+	)
+	# Slab 3: 18% (above ₹7,500 — max_tariff 0 means no upper limit)
+	settings.append(
+		"tax_slabs",
+		{"min_tariff": 7501, "max_tariff": 0, "item_tax_template": gst_18, "tax_rate": 18},
+	)
+	settings.save(ignore_permissions=True)
+	frappe.db.commit()
+	print("  [ok]  Default room tax slabs seeded in Booking Settings.")
 
 
 def create_standard_billing_items():
