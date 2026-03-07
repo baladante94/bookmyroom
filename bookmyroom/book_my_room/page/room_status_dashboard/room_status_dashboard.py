@@ -5,7 +5,8 @@ import calendar
 
 import frappe
 from frappe import _
-from frappe.utils import flt, getdate, today
+from frappe.query_builder.functions import Sum
+from frappe.utils import add_days, date_diff, flt, get_first_day, getdate, today
 
 
 @frappe.whitelist()
@@ -145,3 +146,252 @@ def get_calendar_data(hotel=None, from_date=None, to_date=None):
 			)
 
 	return result
+
+
+# ── New KPI + chart endpoints ─────────────────────────────────────────────── #
+
+@frappe.whitelist()
+def get_dashboard_kpis(hotel=None):
+	"""Return all KPI numbers for the dashboard header cards in one request."""
+	t = today()
+	month_start = get_first_day(t).strftime("%Y-%m-%d")
+	base = {"docstatus": 1}
+	if hotel:
+		base["hotel"] = hotel
+
+	checkins_today = frappe.db.count("Room Reservation", {
+		**base,
+		"check_in": ["between", [t + " 00:00:00", t + " 23:59:59"]],
+		"status": ["in", ["Booked", "Checked In"]],
+	})
+	checkouts_today = frappe.db.count("Room Reservation", {
+		**base,
+		"check_out": ["between", [t + " 00:00:00", t + " 23:59:59"]],
+		"status": ["in", ["Checked In", "Checked Out"]],
+	})
+	occupied = frappe.db.count("Room Reservation", {**base, "status": "Checked In"})
+	booked = frappe.db.count("Room Reservation", {**base, "status": "Booked"})
+
+	room_f = {"hotel": hotel} if hotel else {}
+	total_rooms    = frappe.db.count("Room", room_f)
+	available_rooms = frappe.db.count("Room", {**room_f, "status": "Available"})
+	occupied_rooms  = frappe.db.count("Room", {**room_f, "status": "Occupied"})
+	vacant_clean    = frappe.db.count("Room", {**room_f, "status": "Vacant", "housekeeping_status": "Clean"})
+	vacant_dirty    = frappe.db.count("Room", {**room_f, "status": "Vacant", "housekeeping_status": "Dirty"})
+	out_of_order    = frappe.db.count("Room", {**room_f, "status": "Out of Order"})
+	in_maintenance  = frappe.db.count("Room", {**room_f, "status": "Maintenance"})
+
+	si = frappe.qb.DocType("Sales Invoice")
+	rev_today_row = (
+		frappe.qb.from_(si)
+		.select(Sum(si.grand_total))
+		.where(si.docstatus == 1)
+		.where(si.posting_date == t)
+		.run()
+	)
+	revenue_today = flt((rev_today_row or [[0]])[0][0])
+
+	rev_month_row = (
+		frappe.qb.from_(si)
+		.select(Sum(si.grand_total))
+		.where(si.docstatus == 1)
+		.where(si.posting_date >= month_start)
+		.run()
+	)
+	revenue_month = flt((rev_month_row or [[0]])[0][0])
+
+	return {
+		"checkins_today":  checkins_today or 0,
+		"checkouts_today": checkouts_today or 0,
+		"occupied":        occupied or 0,
+		"booked":          booked or 0,
+		"available_rooms": available_rooms or 0,
+		"total_rooms":     total_rooms or 0,
+		"occupied_rooms":  occupied_rooms or 0,
+		"occupancy_pct":   round(occupied_rooms / total_rooms * 100) if total_rooms else 0,
+		"revenue_today":   revenue_today,
+		"revenue_month":   revenue_month,
+		"vacant_clean":    vacant_clean or 0,
+		"vacant_dirty":    vacant_dirty or 0,
+		"out_of_order":    out_of_order or 0,
+		"in_maintenance":  in_maintenance or 0,
+	}
+
+
+@frappe.whitelist()
+def get_revenue_trend(hotel=None, days=14):
+	"""Return daily revenue (sum of SI grand_total) for the last N days."""
+	days = int(days)
+	t = today()
+	start = add_days(t, -(days - 1))
+
+	si = frappe.qb.DocType("Sales Invoice")
+	rows = (
+		frappe.qb.from_(si)
+		.select(si.posting_date, Sum(si.grand_total).as_("revenue"))
+		.where(si.docstatus == 1)
+		.where(si.posting_date >= start)
+		.groupby(si.posting_date)
+		.orderby(si.posting_date)
+		.run(as_dict=True)
+	)
+	by_date = {str(r.posting_date): flt(r.revenue) for r in rows}
+	return [{"date": add_days(start, i), "revenue": by_date.get(add_days(start, i), 0)}
+			for i in range(days)]
+
+
+@frappe.whitelist()
+def get_today_arrivals_departures(hotel=None):
+	"""Return today's check-in list and check-out list with room numbers."""
+	t = today()
+	base = {"docstatus": 1}
+	if hotel:
+		base["hotel"] = hotel
+
+	arrivals_res = frappe.get_all(
+		"Room Reservation",
+		filters={**base, "check_in": ["between", [t + " 00:00:00", t + " 23:59:59"]],
+				 "status": ["in", ["Booked", "Checked In"]]},
+		fields=["name", "customer", "status", "check_in", "check_out"],
+	)
+	departures_res = frappe.get_all(
+		"Room Reservation",
+		filters={**base, "check_out": ["between", [t + " 00:00:00", t + " 23:59:59"]],
+				 "status": ["in", ["Checked In", "Checked Out"]]},
+		fields=["name", "customer", "status", "check_in", "check_out"],
+	)
+
+	def _enrich(res_list):
+		if not res_list:
+			return []
+		names = [r.name for r in res_list]
+		items = frappe.get_all(
+			"Room Reservation Item",
+			filters={"parent": ["in", names]},
+			fields=["parent", "room"],
+		)
+		by_parent = {}
+		for item in items:
+			by_parent.setdefault(item.parent, []).append(item.room)
+		return [
+			{"name": r.name, "customer": r.customer, "status": r.status,
+			 "rooms": by_parent.get(r.name, [])}
+			for r in res_list
+		]
+
+	return {"arrivals": _enrich(arrivals_res), "departures": _enrich(departures_res)}
+
+
+# ── Custom Number Card methods (called by workspace cards) ────────────────── #
+
+@frappe.whitelist()
+def nc_checkins_today(**kwargs):
+	t = today()
+	return frappe.db.count("Room Reservation", {
+		"docstatus": 1,
+		"check_in": ["between", [t + " 00:00:00", t + " 23:59:59"]],
+		"status": ["in", ["Booked", "Checked In"]],
+	}) or 0
+
+
+@frappe.whitelist()
+def nc_checkouts_today(**kwargs):
+	t = today()
+	return frappe.db.count("Room Reservation", {
+		"docstatus": 1,
+		"check_out": ["between", [t + " 00:00:00", t + " 23:59:59"]],
+		"status": ["in", ["Checked In", "Checked Out"]],
+	}) or 0
+
+
+@frappe.whitelist()
+def nc_revenue_this_month(**kwargs):
+	t = today()
+	month_start = get_first_day(t).strftime("%Y-%m-%d")
+	si = frappe.qb.DocType("Sales Invoice")
+	result = (
+		frappe.qb.from_(si)
+		.select(Sum(si.grand_total))
+		.where(si.docstatus == 1)
+		.where(si.posting_date >= month_start)
+		.run()
+	)
+	return flt((result or [[0]])[0][0])
+
+
+@frappe.whitelist()
+def get_housekeeping_board(hotel=None):
+	"""Return all rooms with housekeeping status and today's assignment from Housekeeping Log."""
+	t = today()
+	room_f = {"hotel": hotel} if hotel else {}
+	rooms = frappe.get_all(
+		"Room",
+		filters=room_f,
+		fields=["name", "room_name", "floor", "status", "housekeeping_status"],
+		order_by="floor asc, room_name asc",
+	)
+	if not rooms:
+		return []
+
+	hk_filters = {"date": t}
+	if hotel:
+		hk_filters["hotel"] = hotel
+	try:
+		hk_logs = frappe.get_all(
+			"Housekeeping Log",
+			filters=hk_filters,
+			fields=["room", "assigned_to", "status"],
+			order_by="creation desc",
+		)
+	except Exception:
+		hk_logs = []
+
+	hk_by_room = {}
+	for log in hk_logs:
+		if log.room not in hk_by_room:
+			hk_by_room[log.room] = log
+
+	result = []
+	for r in rooms:
+		log = hk_by_room.get(r.name)
+		result.append({
+			"name": r.name,
+			"room_name": r.room_name or r.name,
+			"floor": r.floor or "",
+			"room_status": r.status,
+			"hk_status": r.housekeeping_status or "Clean",
+			"assigned_to": log.assigned_to if log else None,
+		})
+	return result
+
+
+@frappe.whitelist()
+def quick_update_reservation(reservation, check_out=None, new_room=None, old_room=None):
+	"""Quick update reservation dates or room from the dashboard."""
+	if check_out:
+		doc = frappe.get_doc("Room Reservation", reservation)
+		ci_date = getdate(str(doc.check_in).split(" ")[0])
+		co_date = getdate(str(check_out).split(" ")[0])
+		nights = date_diff(co_date, ci_date)
+		frappe.db.set_value("Room Reservation", reservation, {
+			"check_out": check_out,
+			"total_nights": nights if nights > 0 else doc.total_nights,
+		})
+
+	if new_room and old_room and new_room != old_room:
+		items = frappe.get_all(
+			"Room Reservation Item",
+			filters={"parent": reservation, "room": old_room},
+			fields=["name"],
+			limit=1,
+		)
+		if items:
+			frappe.db.set_value("Room Reservation Item", items[0].name, "room", new_room)
+
+		res = frappe.get_doc("Room Reservation", reservation)
+		if res.status == "Checked In":
+			frappe.db.set_value("Room", old_room, "status", "Vacant")
+			frappe.db.set_value("Room", new_room, "status", "Occupied")
+
+	frappe.db.commit()
+	return True

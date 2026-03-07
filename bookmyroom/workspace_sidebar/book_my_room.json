@@ -7,14 +7,14 @@
  "idx": 0,
  "items": [
   {
-   "child": 0,
+   "child": 1,
    "collapsible": 1,
-   "icon": "home",
+   "icon": "monitor",
    "indent": 0,
    "keep_closed": 0,
-   "label": "Home",
-   "link_to": "Book My Room",
-   "link_type": "Workspace",
+   "label": "Dashboard",
+   "link_to": "room-status-dashboard",
+   "link_type": "Page",
    "show_arrow": 0,
    "type": "Link"
   },
@@ -199,7 +199,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-03-07 12:43:54.886488",
+ "modified": "2026-03-07 20:13:23.982729",
  "modified_by": "Administrator",
  "module": "Book My Room",
  "name": "Book My Room",

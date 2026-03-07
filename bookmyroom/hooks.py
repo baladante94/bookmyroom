@@ -66,6 +66,8 @@ after_migrate = "bookmyroom.install.after_migrate"
 
 fixtures = [
 	{"dt": "Custom HTML Block", "filters": [["name", "=", "BMR Room Status Grid"]]},
+	{"dt": "Number Card", "filters": [["name", "like", "BMR %"]]},
+	{"dt": "Dashboard Chart", "filters": [["name", "like", "BMR %"]]},
 ]
 
 # Uninstallation

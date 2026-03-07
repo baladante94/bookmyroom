@@ -1,0 +1,59 @@
+[
+  {
+    "doctype": "Number Card",
+    "name": "BMR Check-ins Today",
+    "label": "Check-ins Today",
+    "document_type": "Room Reservation",
+    "type": "Custom",
+    "method": "bookmyroom.book_my_room.page.room_status_dashboard.room_status_dashboard.nc_checkins_today",
+    "color": "#4f46e5",
+    "stats_time_interval": "Daily",
+    "show_percentage_stats": 0
+  },
+  {
+    "doctype": "Number Card",
+    "name": "BMR Check-outs Today",
+    "label": "Check-outs Today",
+    "document_type": "Room Reservation",
+    "type": "Custom",
+    "method": "bookmyroom.book_my_room.page.room_status_dashboard.room_status_dashboard.nc_checkouts_today",
+    "color": "#0ea5e9",
+    "stats_time_interval": "Daily",
+    "show_percentage_stats": 0
+  },
+  {
+    "doctype": "Number Card",
+    "name": "BMR Guests Checked In",
+    "label": "Guests Checked In",
+    "document_type": "Room Reservation",
+    "type": "Document Type",
+    "filters_json": "[{\"fieldname\":\"status\",\"filter_type\":\"Equals\",\"value\":\"Checked In\",\"label\":\"Status\"}]",
+    "function": "Count",
+    "color": "#10b981",
+    "stats_time_interval": "Daily",
+    "show_percentage_stats": 0
+  },
+  {
+    "doctype": "Number Card",
+    "name": "BMR Available Rooms",
+    "label": "Available Rooms",
+    "document_type": "Room",
+    "type": "Document Type",
+    "filters_json": "[{\"fieldname\":\"status\",\"filter_type\":\"Equals\",\"value\":\"Available\",\"label\":\"Status\"}]",
+    "function": "Count",
+    "color": "#6366f1",
+    "stats_time_interval": "Daily",
+    "show_percentage_stats": 0
+  },
+  {
+    "doctype": "Number Card",
+    "name": "BMR Revenue This Month",
+    "label": "Revenue This Month",
+    "document_type": "Sales Invoice",
+    "type": "Custom",
+    "method": "bookmyroom.book_my_room.page.room_status_dashboard.room_status_dashboard.nc_revenue_this_month",
+    "color": "#ec4899",
+    "stats_time_interval": "Monthly",
+    "show_percentage_stats": 0
+  }
+]
