@@ -5,6 +5,7 @@
  "engine": "InnoDB",
  "field_order": [
   "block_backdated_booking",
+  "default_hotel",
   "tax_config_section",
   "tax_config_help",
   "tax_slabs",
@@ -19,6 +20,13 @@
    "fieldname": "block_backdated_booking",
    "fieldtype": "Check",
    "label": "Block Backdated Booking"
+  },
+  {
+   "description": "Default hotel used across the app (dashboard filters and new bookings). Users can still change it anytime.",
+   "fieldname": "default_hotel",
+   "fieldtype": "Link",
+   "label": "Default Hotel",
+   "options": "Hotel"
   },
   {
    "fieldname": "tax_config_section",

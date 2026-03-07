@@ -5,6 +5,8 @@
 // State cached per-form to avoid redundant server fetches
 // ─────────────────────────────────────────────────────────────────────────────
 let _mealPlanRate = 0; // extra rate per person per night
+let _defaultHotel = null;
+let _defaultHotelLoaded = false;
 
 frappe.ui.form.on("Room Reservation", {
 	// ── Setup ──────────────────────────────────────────────────────────────── //
@@ -19,6 +21,7 @@ frappe.ui.form.on("Room Reservation", {
 		_refreshActionButtons(frm);
 		_updateBalanceColor(frm);
 		_loadTaxSlabs(frm);
+		_apply_default_hotel(frm);
 
 		// Pre-fill room from dashboard click (window._bmr_prefill_room set by workspace grid)
 		if (frm.is_new() && window._bmr_prefill_room) {
@@ -306,6 +309,36 @@ function _loadTaxSlabs(frm) {
 		method: "bookmyroom.book_my_room.doctype.booking_settings.booking_settings.get_tax_slabs",
 		callback({ message }) {
 			frm._taxSlabs = message || [];
+		},
+	});
+}
+
+/**
+ * Auto-apply Booking Settings.default_hotel on new reservations.
+ * Applied only once per form load and never overrides an existing hotel.
+ */
+function _apply_default_hotel(frm) {
+	if (!frm.is_new() || frm.doc.hotel || frm._default_hotel_applied || window._bmr_hotel) return;
+	frm._default_hotel_applied = true;
+
+	if (_defaultHotelLoaded) {
+		if (_defaultHotel) {
+			frm.set_value("hotel", _defaultHotel);
+		}
+		return;
+	}
+
+	frappe.call({
+		method: "bookmyroom.book_my_room.doctype.booking_settings.booking_settings.get_booking_settings",
+		callback({ message }) {
+			_defaultHotelLoaded = true;
+			_defaultHotel = message?.default_hotel || null;
+			if (_defaultHotel && !frm.doc.hotel) {
+				frm.set_value("hotel", _defaultHotel);
+			}
+		},
+		error() {
+			_defaultHotelLoaded = true;
 		},
 	});
 }

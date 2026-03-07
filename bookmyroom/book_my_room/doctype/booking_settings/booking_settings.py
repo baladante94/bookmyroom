@@ -18,6 +18,7 @@ def get_booking_settings():
 			"Booking Settings", "block_backdated_booking"
 		)
 		or 0,
+		"default_hotel": frappe.db.get_single_value("Booking Settings", "default_hotel"),
 	}
 
 

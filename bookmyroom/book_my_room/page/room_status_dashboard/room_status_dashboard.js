@@ -22,10 +22,12 @@ frappe.pages["room-status-dashboard"].on_page_load = function (wrapper) {
 		fieldname: "hotel",
 		default: "",
 		change() {
+			if (_skipHotelChange) return;
 			dash.hotel = hotelField.get_value() || null;
 			dash.refresh();
 		},
 	});
+	let _skipHotelChange = false;
 
 	let calMonth = frappe.datetime.get_today().slice(0, 7);
 
@@ -235,7 +237,25 @@ frappe.pages["room-status-dashboard"].on_page_load = function (wrapper) {
 	});
 
 	wrapper.dashboard = dash;
-	dash.refresh();
+
+	// Respect Booking Settings default hotel on first load.
+	// User can clear/change the filter afterwards.
+	frappe.call({
+		method: "bookmyroom.book_my_room.doctype.booking_settings.booking_settings.get_booking_settings",
+		callback(r) {
+			const defaultHotel = r.message?.default_hotel;
+			if (defaultHotel && !hotelField.get_value()) {
+				_skipHotelChange = true;
+				hotelField.set_value(defaultHotel);
+				_skipHotelChange = false;
+				dash.hotel = defaultHotel;
+			}
+			dash.refresh();
+		},
+		error() {
+			dash.refresh();
+		},
+	});
 };
 
 frappe.pages["room-status-dashboard"].on_page_show = function (wrapper) {
@@ -724,20 +744,20 @@ function _render_arrivals_departures($root, data) {
 		if (!items.length) return `<div class="bmr-ad-empty">${emptyMsg}</div>`;
 		return items.map(function (r) {
 			const rooms  = r.rooms && r.rooms.length ? r.rooms.join(", ") : "—";
-			const stCls  = r.status === "Checked In" ? "bmr-tip-ci" : r.status === "Checked Out" ? "bmr-tip-co" : "bmr-tip-bk";
-			let actionBtn = "";
-			if (isArrival && r.status === "Booked") {
-				actionBtn = `<button class="bmr-ad-action-btn bmr-ad-checkin" data-res="${r.name}">Check-in</button>`;
-			} else if (!isArrival && r.status === "Checked In") {
-				actionBtn = `<button class="bmr-ad-action-btn bmr-ad-checkout" data-res="${r.name}">Checkout</button>`;
-			}
-			return `<div class="bmr-ad-row" data-res="${r.name}">
-				<div class="bmr-ad-rooms">${frappe.utils.escape_html(rooms)}</div>
-				<div class="bmr-ad-customer">${frappe.utils.escape_html(r.customer)}</div>
-				<span class="bmr-tip-badge ${stCls}">${r.status}</span>
-				${actionBtn}
-			</div>`;
-		}).join("");
+				const stCls  = r.status === "Checked In" ? "bmr-ad-st-ci" : r.status === "Checked Out" ? "bmr-ad-st-co" : "bmr-ad-st-bk";
+				let actionBtn = "";
+				if (isArrival && r.status === "Booked") {
+					actionBtn = `<button class="bmr-ad-pill bmr-ad-action-btn bmr-ad-checkin" data-res="${r.name}">Check-in</button>`;
+				} else if (!isArrival && r.status === "Checked In") {
+					actionBtn = `<button class="bmr-ad-pill bmr-ad-action-btn bmr-ad-checkout" data-res="${r.name}">Checkout</button>`;
+				}
+				return `<div class="bmr-ad-row" data-res="${r.name}">
+					<div class="bmr-ad-rooms">${frappe.utils.escape_html(rooms)}</div>
+					<div class="bmr-ad-customer">${frappe.utils.escape_html(r.customer)}</div>
+					<span class="bmr-ad-pill bmr-ad-status ${stCls}">${r.status}</span>
+					${actionBtn}
+				</div>`;
+			}).join("");
 	}
 
 	$root.append(`
@@ -887,19 +907,35 @@ function _inject_styles() {
 	s.id = "bmr-dash-style";
 	s.textContent = `
 /* Nav */
-.bmr-cal-nav{display:flex;align-items:center;gap:12px;padding:10px 0 4px}
-.bmr-nav-btn{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:4px 14px;cursor:pointer;font-size:16px;line-height:1.5;transition:background .15s}
-.bmr-nav-btn:hover{background:#f1f5f9}
-.bmr-cal-label{font-weight:700;font-size:14px;color:#0f172a;min-width:120px;text-align:center}
+.bmr-cal-nav{
+	display:flex;align-items:center;gap:12px;padding:10px 12px 8px;
+	background:linear-gradient(135deg,#f8fafc,#eef2ff);
+	border:1px solid #e2e8f0;border-radius:12px;
+	box-shadow:0 4px 18px rgba(15,23,42,.05),inset 0 1px 0 rgba(255,255,255,.8);
+}
+.bmr-nav-btn{
+	background:linear-gradient(180deg,#ffffff,#f1f5f9);
+	border:1px solid #dbe4ef;border-radius:10px;padding:4px 14px;cursor:pointer;font-size:16px;line-height:1.5;
+	transition:all .18s;box-shadow:0 2px 8px rgba(15,23,42,.08);
+}
+.bmr-nav-btn:hover{background:linear-gradient(180deg,#ffffff,#e9eef6);transform:translateY(-1px)}
+.bmr-cal-label{font-weight:700;font-size:14px;color:#0f172a;min-width:120px;text-align:center;letter-spacing:.02em}
 
 /* Dashboard */
-.bmr-dash{padding:8px 0 48px}
+.bmr-dash{
+	padding:14px 12px 48px;margin-top:10px;border-radius:16px;
+	background:
+		radial-gradient(circle at 0% 0%,rgba(79,70,229,.08) 0%,rgba(79,70,229,0) 45%),
+		radial-gradient(circle at 100% 0%,rgba(14,165,233,.08) 0%,rgba(14,165,233,0) 40%),
+		linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);
+	border:1px solid #e5eaf2;
+}
 
 /* Quick Actions */
 .bmr-actions-row{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
 
 /* Top row: KPI grid (left) + HK board (right) — stretch so board matches KPI height */
-.bmr-top-row{display:grid;grid-template-columns:1fr 290px;gap:14px;align-items:start;margin-bottom:22px}
+.bmr-top-row{display:grid;grid-template-columns:1fr 290px;gap:14px;align-items:stretch;margin-bottom:22px}
 .bmr-kpi-side .bmr-kpi-row{margin-bottom:0}
 .bmr-hk-side{display:flex;flex-direction:column}
 .bmr-action-btn{display:inline-flex;align-items:center;gap:7px;padding:9px 20px;border-radius:10px;border:none;cursor:pointer;font-size:13px;font-weight:700;letter-spacing:.01em;transition:all .15s;box-shadow:0 2px 6px rgba(0,0,0,.08)}
@@ -910,9 +946,22 @@ function _inject_styles() {
 .bmr-act-res:hover{background:linear-gradient(135deg,#0284c7,#0ea5e9);box-shadow:0 4px 14px rgba(14,165,233,.35);transform:translateY(-1px)}
 
 /* KPI Row — 8 cards, no truncation */
-.bmr-kpi-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:22px}
-.bmr-kpi-card{border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 12px rgba(0,0,0,.04);padding:16px 14px 14px;display:flex;align-items:flex-start;gap:10px;border:1px solid rgba(0,0,0,.06);transition:box-shadow .18s,transform .18s;cursor:default;min-height:90px}
-.bmr-kpi-card:hover{box-shadow:0 6px 24px rgba(0,0,0,.10);transform:translateY(-2px)}
+.bmr-kpi-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:22px}
+.bmr-kpi-card{
+	position:relative;border-radius:14px;
+	background:linear-gradient(180deg,#ffffff 0%,#f9fbff 100%);
+	box-shadow:0 2px 8px rgba(15,23,42,.06),0 12px 26px rgba(15,23,42,.05);
+	padding:16px 14px 14px;display:flex;align-items:flex-start;gap:10px;
+	border:1px solid rgba(148,163,184,.25);
+	transition:box-shadow .2s,transform .2s,border-color .2s;cursor:default;min-height:90px;
+	animation:bmr-rise .28s ease-out both;
+}
+.bmr-kpi-card::after{
+	content:"";position:absolute;left:0;right:0;top:0;height:3px;border-radius:14px 14px 0 0;
+	background:linear-gradient(90deg,var(--accent,#4f46e5),color-mix(in srgb,var(--accent,#4f46e5) 45%,#fff));
+	opacity:.8;
+}
+.bmr-kpi-card:hover{box-shadow:0 8px 24px rgba(15,23,42,.14);transform:translateY(-3px);border-color:rgba(99,102,241,.35)}
 .bmr-kpi-icon{width:36px;height:36px;min-width:36px;border-radius:9px;background:color-mix(in srgb,var(--accent,#4f46e5) 15%,white);display:flex;align-items:center;justify-content:center;color:var(--accent,#4f46e5);margin-top:2px}
 .bmr-kpi-icon svg{width:17px;height:17px}
 .bmr-kpi-body{flex:1;min-width:0}
@@ -926,7 +975,12 @@ function _inject_styles() {
 @keyframes bmr-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 
 /* Housekeeping Board panel */
-.bmr-hkb-panel{background:#fff;border-radius:14px;border:1px solid #e2e8f0;box-shadow:0 1px 4px rgba(0,0,0,.06);overflow:hidden;display:flex;flex-direction:column;max-height:230px}
+.bmr-hkb-panel{
+	background:linear-gradient(180deg,#ffffff,#f8fafc);
+	border-radius:14px;border:1px solid #e2e8f0;
+	box-shadow:0 2px 10px rgba(15,23,42,.08),0 14px 24px rgba(15,23,42,.04);
+	overflow:hidden;display:flex;flex-direction:column;max-height:230px;
+}
 .bmr-hkb-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:linear-gradient(135deg,#f8fafc,#f1f5f9);border-bottom:1px solid #e2e8f0;flex-shrink:0}
 .bmr-hkb-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b}
 .bmr-hkb-count{font-size:10px;color:#94a3b8;font-weight:500}
@@ -949,7 +1003,15 @@ function _inject_styles() {
 .bmr-hkb-none{color:#cbd5e1}
 
 /* Sections */
-.bmr-section-head{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;margin:28px 0 10px;padding-bottom:6px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.bmr-section-head{
+	font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:#475569;
+	margin:28px 0 10px;padding:2px 0 8px;border-bottom:1px solid #dbe4ef;
+	display:flex;align-items:center;gap:10px;flex-wrap:wrap;position:relative;
+}
+.bmr-section-head::before{
+	content:"";width:22px;height:3px;border-radius:3px;
+	background:linear-gradient(90deg,#4f46e5,#0ea5e9);
+}
 .bmr-legend-row{display:flex;gap:10px;flex-wrap:wrap;margin-left:auto}
 .bmr-leg{display:flex;align-items:center;gap:4px;font-size:10px;color:#64748b;font-weight:500}
 .bmr-leg-dot{display:inline-block;width:8px;height:8px;border-radius:50%}
@@ -957,8 +1019,8 @@ function _inject_styles() {
 
 /* Room Chips */
 .bmr-room-strip{display:flex;flex-wrap:wrap;gap:6px;padding:10px 0 16px}
-.bmr-chip{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;min-width:52px;padding:5px 8px;border-radius:8px;cursor:pointer;border:1px solid;transition:transform .12s,box-shadow .12s;line-height:1.2}
-.bmr-chip:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.12)}
+.bmr-chip{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;min-width:52px;padding:5px 8px;border-radius:9px;cursor:pointer;border:1px solid;transition:transform .16s,box-shadow .16s,filter .16s;line-height:1.2;box-shadow:0 2px 8px rgba(15,23,42,.09)}
+.bmr-chip:hover{transform:translateY(-2px) scale(1.03);box-shadow:0 8px 16px rgba(15,23,42,.15);filter:saturate(1.08)}
 .bmr-chip-num{font-size:12px;font-weight:700;color:inherit}
 .bmr-chip-guest{font-size:9px;font-weight:500;color:inherit;opacity:.7;max-width:50px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ch-av{background:#dcfce7;color:#166534;border-color:#86efac}
@@ -977,7 +1039,11 @@ function _inject_styles() {
 .ch-mn.bmr-leg-dot{background:#7c3aed}
 
 /* Matrix Calendar */
-.bmr-m-wrap{overflow:auto;max-height:520px;border-radius:12px;border:1px solid #e2e8f0;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.bmr-m-wrap{
+	overflow:auto;max-height:520px;border-radius:12px;border:1px solid #dbe4ef;
+	box-shadow:0 2px 10px rgba(15,23,42,.08),0 16px 26px rgba(15,23,42,.05);
+	background:#fff;
+}
 .bmr-matrix{border-collapse:separate;border-spacing:0;font-size:11px;background:#fff;width:max-content;min-width:100%}
 .bmr-matrix th{background:#f1f5f9;border-bottom:2px solid #dde4f0;border-right:1px solid #e8edf4;padding:6px 2px 4px;text-align:center;min-width:32px;height:40px;font-weight:600;color:#64748b;position:sticky;top:0;z-index:2}
 .bmr-matrix td{border-bottom:1px solid #f0f4fa;border-right:1px solid #f0f4fa;padding:0;text-align:center;min-width:32px;height:34px;position:relative}
@@ -1040,7 +1106,12 @@ th.bmr-today-col{background:linear-gradient(180deg,#dbeafe,#eff6ff)!important;co
 
 /* Arrivals / Departures */
 .bmr-ad-panels{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px}
-.bmr-ad-panel{background:#fff;border-radius:14px;border:1px solid #e2e8f0;box-shadow:0 1px 4px rgba(0,0,0,.06);overflow:hidden}
+.bmr-ad-panel{
+	background:linear-gradient(180deg,#ffffff,#f8fafc);
+	border-radius:14px;border:1px solid #dbe4ef;
+	box-shadow:0 2px 10px rgba(15,23,42,.08),0 12px 22px rgba(15,23,42,.04);
+	overflow:hidden;
+}
 .bmr-ad-title{display:flex;align-items:center;gap:7px;padding:11px 16px;background:#f8fafc;border-bottom:1px solid #e2e8f0;font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.06em}
 .bmr-ad-list{padding:4px 0;max-height:220px;overflow-y:auto}
 .bmr-ad-row{display:flex;align-items:center;gap:10px;padding:8px 16px;cursor:pointer;border-bottom:1px solid #f1f5f9;transition:background .12s}
@@ -1049,22 +1120,36 @@ th.bmr-today-col{background:linear-gradient(180deg,#dbeafe,#eff6ff)!important;co
 .bmr-ad-rooms{font-size:11px;font-weight:700;color:#1e293b;min-width:55px;white-space:nowrap}
 .bmr-ad-customer{flex:1;font-size:12px;color:#475569;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bmr-ad-empty{padding:28px 16px;text-align:center;color:#94a3b8;font-size:12px}
-.bmr-ad-action-btn{flex-shrink:0;padding:3px 12px;border-radius:20px;border:none;cursor:pointer;font-size:11px;font-weight:700;transition:all .12s;white-space:nowrap}
-.bmr-ad-checkin{background:#4f46e5;color:#fff}
-.bmr-ad-checkin:hover{background:#3730a3}
-.bmr-ad-checkout{background:#10b981;color:#fff}
+	.bmr-ad-pill{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;min-width:88px;height:24px;padding:0 12px;border-radius:20px;font-size:11px;font-weight:700;line-height:1;white-space:nowrap}
+	.bmr-ad-status{text-transform:uppercase;letter-spacing:.03em;cursor:default}
+	.bmr-ad-action-btn{border:none;cursor:pointer;transition:all .12s}
+	.bmr-ad-st-bk{background:#f59e0b;color:#fff}
+	.bmr-ad-st-ci{background:#4f46e5;color:#fff}
+	.bmr-ad-st-co{background:#10b981;color:#fff}
+	.bmr-ad-checkin{background:#4f46e5;color:#fff}
+	.bmr-ad-checkin:hover{background:#3730a3}
+	.bmr-ad-checkout{background:#10b981;color:#fff}
 .bmr-ad-checkout:hover{background:#059669}
 .bmr-ad-action-btn:disabled{opacity:.5;cursor:default}
 .bmr-hkb-fcount{font-weight:500;opacity:.75}
 
 /* Charts */
 .bmr-charts-row{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:28px}
-.bmr-chart-card{background:#fff;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.06);padding:20px 20px 12px;border:1px solid #e2e8f0}
+.bmr-chart-card{
+	background:linear-gradient(180deg,#ffffff,#f9fbff);
+	border-radius:14px;box-shadow:0 2px 10px rgba(15,23,42,.08),0 12px 24px rgba(15,23,42,.04);
+	padding:20px 20px 12px;border:1px solid #dbe4ef;
+}
 .bmr-chart-title{font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px}
 .bmr-chart-empty{height:180px;display:flex;align-items:center;justify-content:center;color:#64748b;font-size:13px}
 
 /* Empty */
 .bmr-empty{text-align:center;padding:60px 0;color:#64748b;font-size:14px}
+
+@keyframes bmr-rise{
+	from{opacity:0;transform:translateY(6px)}
+	to{opacity:1;transform:translateY(0)}
+}
 
 @media(max-width:1100px){
   .bmr-top-row{grid-template-columns:1fr 260px}
