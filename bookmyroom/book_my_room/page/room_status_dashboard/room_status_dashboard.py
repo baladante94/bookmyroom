@@ -370,12 +370,23 @@ def quick_update_reservation(reservation, check_out=None, new_room=None, old_roo
 	"""Quick update reservation dates or room from the dashboard."""
 	if check_out:
 		doc = frappe.get_doc("Room Reservation", reservation)
-		ci_date = getdate(str(doc.check_in).split(" ")[0])
-		co_date = getdate(str(check_out).split(" ")[0])
-		nights = date_diff(co_date, ci_date)
+		doc.check_out = check_out
+		doc.calculate_totals()
+
+		# Persist recalculated child-row amounts
+		for row in doc.get("items"):
+			frappe.db.set_value("Room Reservation Item", row.name, "amount", row.amount)
+
+		# Persist all recalculated header fields
 		frappe.db.set_value("Room Reservation", reservation, {
 			"check_out": check_out,
-			"total_nights": nights if nights > 0 else doc.total_nights,
+			"total_nights": doc.total_nights,
+			"total_amount": doc.total_amount,
+			"meal_plan_amount": doc.meal_plan_amount,
+			"discount_amount": doc.discount_amount,
+			"tax_amount": doc.tax_amount,
+			"grand_total": doc.grand_total,
+			"balance_due": doc.balance_due,
 		})
 
 	if new_room and old_room and new_room != old_room:
@@ -394,6 +405,12 @@ def quick_update_reservation(reservation, check_out=None, new_room=None, old_roo
 			frappe.db.set_value("Room", new_room, "status", "Occupied")
 
 	frappe.db.commit()
+	frappe.publish_realtime(
+		"doc_update",
+		{"doctype": "Room Reservation", "name": reservation},
+		doctype="Room Reservation",
+		docname=reservation,
+	)
 	return True
 
 

@@ -6,6 +6,7 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.model.mapper import get_mapped_doc
 from frappe.utils import flt, format_datetime, getdate, nowdate
+from frappe.utils import nowdate as _nowdate
 
 
 class RoomReservation(Document):
@@ -346,7 +347,7 @@ def make_sales_invoice(source_name, target_doc=None):
 	def set_missing_values(source, target):
 		target.customer = source.customer
 		target.company = source.company
-		target.due_date = _getdate(source.check_out)
+		target.due_date = max(_getdate(source.check_out), _getdate(_nowdate()))
 		target.bmr_reservation = source.name
 
 		# Add meal plan charges as a separate line item if applicable
@@ -448,7 +449,10 @@ def make_combined_invoice(source_name):
 	si = frappe.new_doc("Sales Invoice")
 	si.customer = reservation.customer
 	si.company = reservation.company
-	si.due_date = frappe.utils.getdate(reservation.check_out or frappe.utils.nowdate())
+	si.due_date = max(
+		frappe.utils.getdate(reservation.check_out or frappe.utils.nowdate()),
+		frappe.utils.getdate(frappe.utils.nowdate()),
+	)
 
 	# ── Room charges ─────────────────────────────────────────────────────── #
 	for row in reservation.get("items"):
