@@ -34,6 +34,7 @@
    "fieldname": "room",
    "fieldtype": "Link",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Room",
    "options": "Room",
    "reqd": 1
@@ -43,6 +44,7 @@
    "fieldname": "hotel",
    "fieldtype": "Link",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Hotel",
    "options": "Hotel",
    "read_only": 1
@@ -52,6 +54,7 @@
    "fieldname": "date",
    "fieldtype": "Date",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Date",
    "reqd": 1
   },
@@ -60,6 +63,7 @@
    "fieldname": "task_type",
    "fieldtype": "Select",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Task Type",
    "options": "Check-Out Clean\nDaily Service\nDeep Clean\nInspection\nTurn-Down\nMaintenance"
   },
@@ -68,6 +72,7 @@
    "fieldname": "status",
    "fieldtype": "Select",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Status",
    "options": "Pending\nIn Progress\nCompleted\nSkipped"
   },
@@ -78,6 +83,8 @@
   {
    "fieldname": "assigned_to",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Assigned To",
    "options": "User"
   },

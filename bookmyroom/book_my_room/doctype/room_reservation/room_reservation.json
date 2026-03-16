@@ -28,6 +28,7 @@
   "advance_payment_mode",
   "col_break_3",
   "advance_payment_date",
+  "advance_payment_entry",
   "totals_section",
   "discount_type",
   "discount_percentage",
@@ -45,6 +46,7 @@
   "col_break_5",
   "cancellation_reason",
   "cancellation_date",
+  "cancellation_fee",
   "amended_from"
  ],
  "fields": [
@@ -60,6 +62,7 @@
    "fieldname": "customer",
    "fieldtype": "Link",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Customer",
    "options": "Customer",
    "reqd": 1
@@ -76,6 +79,7 @@
    "fieldname": "hotel",
    "fieldtype": "Link",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Hotel",
    "options": "Hotel",
    "reqd": 1
@@ -85,6 +89,7 @@
    "fieldname": "status",
    "fieldtype": "Select",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Status",
    "options": "Booked\nChecked In\nChecked Out\nCancelled\nNo Show",
    "reqd": 1
@@ -97,6 +102,7 @@
    "fieldname": "check_in",
    "fieldtype": "Datetime",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Check In",
    "reqd": 1
   },
@@ -188,6 +194,15 @@
    "fieldname": "advance_payment_date",
    "fieldtype": "Date",
    "label": "Payment Date"
+  },
+  {
+   "description": "Payment Entry created for this advance. Set automatically when you click 'Record Advance'.",
+   "fieldname": "advance_payment_entry",
+   "fieldtype": "Link",
+   "label": "Payment Entry",
+   "no_copy": 1,
+   "options": "Payment Entry",
+   "read_only": 1
   },
   {
    "fieldname": "totals_section",
@@ -286,6 +301,14 @@
    "fieldname": "cancellation_date",
    "fieldtype": "Date",
    "label": "Cancelled On",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:in_list(['Cancelled', 'No Show'], doc.status) && doc.cancellation_fee > 0",
+   "fieldname": "cancellation_fee",
+   "fieldtype": "Currency",
+   "label": "Cancellation Fee",
+   "no_copy": 1,
    "read_only": 1
   },
   {

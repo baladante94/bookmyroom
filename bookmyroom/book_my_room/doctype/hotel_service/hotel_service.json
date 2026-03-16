@@ -21,6 +21,7 @@
    "fieldname": "service_name",
    "fieldtype": "Data",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Service Name",
    "reqd": 1,
    "unique": 1
@@ -29,6 +30,7 @@
    "fieldname": "service_type",
    "fieldtype": "Select",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Service Type",
    "options": "Room Service\nLaundry\nMinibar\nSpa\nRestaurant\nTransportation\nOther",
    "reqd": 1
@@ -37,6 +39,8 @@
    "default": "1",
    "fieldname": "is_active",
    "fieldtype": "Check",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Is Active"
   },
   {

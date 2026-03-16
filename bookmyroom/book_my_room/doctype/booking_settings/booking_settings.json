@@ -6,6 +6,10 @@
  "field_order": [
   "block_backdated_booking",
   "default_hotel",
+  "cancellation_section",
+  "free_cancellation_hours",
+  "cancellation_fee_type",
+  "cancellation_fee_value",
   "tax_config_section",
   "tax_config_help",
   "tax_slabs",
@@ -27,6 +31,32 @@
    "fieldtype": "Link",
    "label": "Default Hotel",
    "options": "Hotel"
+  },
+  {
+   "fieldname": "cancellation_section",
+   "fieldtype": "Section Break",
+   "label": "Cancellation Policy"
+  },
+  {
+   "default": "24",
+   "description": "Cancellations made within this many hours of check-in will incur a fee. Set to 0 to always charge.",
+   "fieldname": "free_cancellation_hours",
+   "fieldtype": "Int",
+   "label": "Free Cancellation Window (Hours)"
+  },
+  {
+   "default": "None",
+   "description": "Fee charged for late cancellations. 'First Night Rate' sums all room rates for one night.",
+   "fieldname": "cancellation_fee_type",
+   "fieldtype": "Select",
+   "label": "Cancellation Fee Type",
+   "options": "None\nFixed Amount\nFirst Night Rate"
+  },
+  {
+   "depends_on": "eval:doc.cancellation_fee_type === 'Fixed Amount'",
+   "fieldname": "cancellation_fee_value",
+   "fieldtype": "Currency",
+   "label": "Cancellation Fee Amount"
   },
   {
    "fieldname": "tax_config_section",

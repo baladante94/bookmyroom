@@ -13,12 +13,13 @@ class BookingSettings(Document):
 @frappe.whitelist()
 def get_booking_settings():
 	"""Return Booking Settings as dict (for client-side consumption)."""
+	doc = frappe.get_single("Booking Settings")
 	return {
-		"block_backdated_booking": frappe.db.get_single_value(
-			"Booking Settings", "block_backdated_booking"
-		)
-		or 0,
-		"default_hotel": frappe.db.get_single_value("Booking Settings", "default_hotel"),
+		"block_backdated_booking": doc.block_backdated_booking or 0,
+		"default_hotel": doc.default_hotel,
+		"free_cancellation_hours": doc.free_cancellation_hours or 24,
+		"cancellation_fee_type": doc.cancellation_fee_type or "None",
+		"cancellation_fee_value": doc.cancellation_fee_value or 0,
 	}
 
 

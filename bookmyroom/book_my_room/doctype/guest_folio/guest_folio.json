@@ -34,6 +34,7 @@
    "fieldname": "reservation",
    "fieldtype": "Link",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Reservation",
    "options": "Room Reservation",
    "reqd": 1
@@ -43,6 +44,7 @@
    "fieldname": "customer",
    "fieldtype": "Link",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Customer",
    "options": "Customer",
    "read_only": 1
@@ -64,6 +66,7 @@
    "fieldname": "hotel",
    "fieldtype": "Link",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Hotel",
    "options": "Hotel",
    "read_only": 1
@@ -88,6 +91,7 @@
    "fieldname": "status",
    "fieldtype": "Select",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Status",
    "options": "Open\nSettled"
   },

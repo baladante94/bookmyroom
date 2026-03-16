@@ -24,6 +24,7 @@
    "fieldname": "room_type_name",
    "fieldtype": "Data",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Room Type Name",
    "reqd": 1,
    "unique": 1
@@ -65,6 +66,7 @@
    "fieldname": "bed_type",
    "fieldtype": "Select",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Bed Type",
    "options": "\nSingle\nDouble\nQueen\nKing\nTwin\nBunk\nSofa Bed"
   },

@@ -83,7 +83,7 @@ frappe.pages["room-status-dashboard"].on_page_load = function (wrapper) {
 						_render_quick_actions($root, hotel);
 						// KPI cards (left) + HK board (right) side-by-side
 						$root.append('<div class="bmr-top-row"><div class="bmr-kpi-side"></div><div class="bmr-hk-side"></div></div>');
-						_render_kpis($root.find(".bmr-kpi-side"), collected.kpi || {});
+						_render_kpis($root.find(".bmr-kpi-side"), $root, collected.kpi || {});
 						_render_hk_board($root.find(".bmr-hk-side"), collected.hk || []);
 						// Today's activity above room status
 						_render_arrivals_departures($root, collected.ad || {});
@@ -100,7 +100,7 @@ frappe.pages["room-status-dashboard"].on_page_load = function (wrapper) {
 
 			frappe.call({
 				method: "bookmyroom.book_my_room.page.room_status_dashboard.room_status_dashboard.get_dashboard_kpis",
-				args: { hotel },
+				args: { hotel, from_date: from, to_date: to },
 				callback(r) { done("kpi", r.message || {}); },
 				error()    { done("kpi", {}); },
 			});
@@ -292,22 +292,31 @@ function _render_quick_actions($root, hotel) {
 		const co = new Date();
 		co.setDate(co.getDate() + 1);
 		const coStr = co.getFullYear() + "-" + pad(co.getMonth() + 1) + "-" + pad(co.getDate());
-		window._bmr_hotel          = hotel || null;
-		window._bmr_check_in       = t + " 14:00:00";
-		window._bmr_check_out      = coStr + " 11:00:00";
-		window._bmr_room           = null;
-		window._bmr_booking_source = "Walk-in";
-		frappe.route_hooks.after_load = function (frm) {
-			if (window._bmr_hotel)          frm.set_value("hotel",          window._bmr_hotel);
-			if (window._bmr_check_in)       frm.set_value("check_in",       window._bmr_check_in);
-			if (window._bmr_check_out)      frm.set_value("check_out",      window._bmr_check_out);
-			if (window._bmr_booking_source) frm.set_value("booking_source", window._bmr_booking_source);
-			delete window._bmr_hotel; delete window._bmr_check_in;
-			delete window._bmr_check_out; delete window._bmr_room;
-			delete window._bmr_booking_source;
-			frappe.route_hooks.after_load = null;
+		const _doWalkin = function (cin_time, cout_time) {
+			window._bmr_hotel          = hotel || null;
+			window._bmr_check_in       = cin_time  ? t     + " " + cin_time  : t;
+			window._bmr_check_out      = cout_time ? coStr + " " + cout_time : coStr;
+			window._bmr_room           = null;
+			window._bmr_booking_source = "Walk-in";
+			frappe.route_hooks.after_load = function (frm) {
+				if (window._bmr_hotel)          frm.set_value("hotel",          window._bmr_hotel);
+				if (window._bmr_check_in)       frm.set_value("check_in",       window._bmr_check_in);
+				if (window._bmr_check_out)      frm.set_value("check_out",      window._bmr_check_out);
+				if (window._bmr_booking_source) frm.set_value("booking_source", window._bmr_booking_source);
+				delete window._bmr_hotel; delete window._bmr_check_in;
+				delete window._bmr_check_out; delete window._bmr_room;
+				delete window._bmr_booking_source;
+				frappe.route_hooks.after_load = null;
+			};
+			frappe.new_doc("Room Reservation");
 		};
-		frappe.new_doc("Room Reservation");
+		if (hotel) {
+			frappe.db.get_value("Hotel", hotel, ["checkin_time", "checkout_time"], function (r) {
+				_doWalkin(r && r.checkin_time, r && r.checkout_time);
+			});
+		} else {
+			_doWalkin(null, null);
+		}
 	});
 
 	// New Reservation: just pre-fill hotel
@@ -324,63 +333,122 @@ function _render_quick_actions($root, hotel) {
 	});
 }
 
-// ── KPI Cards (8 cards, fixed layout) ─────────────────────────────────────────
-function _render_kpis($root, kpi) {
+// ── KPI Cards ──────────────────────────────────────────────────────────────────
+function _render_kpis($kpiSide, $fullRoot, kpi) {
 	const fmt = function (n) { return frappe.format(Number(n || 0), { fieldtype: "Int" }); };
 	const cur = function (n) {
 		const c = (frappe.defaults && frappe.defaults.get_default("currency")) || "";
 		return frappe.format(n || 0, { fieldtype: "Currency", options: c });
 	};
+	const shortDate = function (s) {
+		if (!s) return "";
+		const d = new Date(s + "T00:00:00");
+		return d.getDate() + " " + d.toLocaleString("en", { month: "short" });
+	};
+	const periodLabel = shortDate(kpi.period_start) + " – " + shortDate(kpi.period_end);
+	const isCurrent   = !!kpi.is_current_month;
 
+	// ── 6 operational KPI cards ──────────────────────────────────────────────
 	const cards = [
 		{
-			label: "Check-ins Today", value: fmt(kpi.checkins_today), color: "#4f46e5", grad: "135deg,#eef2ff,#e0e7ff",
+			label: isCurrent ? "Check-ins Today" : "Check-ins",
+			value: fmt(isCurrent ? kpi.checkins_today : kpi.checkins),
+			sub: isCurrent ? null : periodLabel,
+			color: "#4f46e5", grad: "135deg,#eef2ff,#e0e7ff",
 			icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>`,
 		},
 		{
-			label: "Check-outs Today", value: fmt(kpi.checkouts_today), color: "#0ea5e9", grad: "135deg,#f0f9ff,#e0f2fe",
+			label: isCurrent ? "Check-outs Today" : "Check-outs",
+			value: fmt(isCurrent ? kpi.checkouts_today : kpi.checkouts),
+			sub: isCurrent ? null : periodLabel,
+			color: "#0ea5e9", grad: "135deg,#f0f9ff,#e0f2fe",
 			icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>`,
 		},
 		{
-			label: "Guests In-House", value: fmt(kpi.occupied), color: "#10b981", grad: "135deg,#f0fdf4,#dcfce7",
+			label: "Guests In-House", value: fmt(kpi.occupied), sub: "current",
+			color: "#10b981", grad: "135deg,#f0fdf4,#dcfce7",
 			icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>`,
 		},
 		{
-			label: "Reserved", value: fmt(kpi.booked), color: "#f59e0b", grad: "135deg,#fffbeb,#fef9c3",
+			label: "Reserved", value: fmt(kpi.booked), sub: "current",
+			color: "#f59e0b", grad: "135deg,#fffbeb,#fef9c3",
 			icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`,
 		},
 		{
-			label: "Available Rooms", value: fmt(kpi.available_rooms), sub: "of " + fmt(kpi.total_rooms) + " total",
+			label: "Available Rooms", value: fmt(kpi.available_rooms),
+			sub: "of " + fmt(kpi.total_rooms) + " total · current",
 			color: "#6366f1", grad: "135deg,#f5f3ff,#ede9fe",
 			icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`,
 		},
 		{
-			label: "Occupancy", value: (kpi.occupancy_pct || 0) + "%", color: "#8b5cf6", grad: "135deg,#faf5ff,#f3e8ff",
+			label: "Occupancy", value: (kpi.occupancy_pct || 0) + "%", sub: "current",
+			color: "#8b5cf6", grad: "135deg,#faf5ff,#f3e8ff",
 			icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>`,
-		},
-		{
-			label: "Revenue Today", value: cur(kpi.revenue_today), color: "#f97316", grad: "135deg,#fff7ed,#ffedd5", currency: true,
-			icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>`,
-		},
-		{
-			label: "Revenue This Month", value: cur(kpi.revenue_month), color: "#ec4899", grad: "135deg,#fdf2f8,#fce7f3", currency: true,
-			icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>`,
 		},
 	];
 
-	let html = `<div class="bmr-kpi-row">`;
+	// 6-card operational row → left column only
+	let opsHtml = `<div class="bmr-kpi-row">`;
 	cards.forEach(function (c) {
-		html += `<div class="bmr-kpi-card" style="--accent:${c.color};background:linear-gradient(${c.grad})">
+		opsHtml += `<div class="bmr-kpi-card" style="--accent:${c.color};background:linear-gradient(${c.grad})">
 			<div class="bmr-kpi-icon">${c.icon}</div>
 			<div class="bmr-kpi-body">
-				<div class="bmr-kpi-value${c.currency ? " bmr-kpi-cur" : ""}">${c.value}</div>
+				<div class="bmr-kpi-value">${c.value}</div>
 				<div class="bmr-kpi-label">${c.label}</div>
 				${c.sub ? `<div class="bmr-kpi-sub">${c.sub}</div>` : ""}
 			</div>
 		</div>`;
 	});
-	html += `</div>`;
-	$root.append(html);
+	opsHtml += `</div>`;
+	$kpiSide.append(opsHtml);
+
+	// ── 2 financial summary cards (wider, more prominent) ────────────────────
+	const currentOutstanding = Math.max(0, (kpi.outstanding_month || 0) - (kpi.overdue_amount || 0));
+	const overdueChip = kpi.overdue_amount > 0
+		? `<span class="bmr-fin-chip bmr-fin-chip-red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="11" height="11"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Overdue &nbsp;<strong>${cur(kpi.overdue_amount)}</strong></span>`
+		: `<span class="bmr-fin-chip bmr-fin-chip-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="11" height="11"><polyline points="20 6 9 17 4 12"/></svg> No overdue</span>`;
+	const currentChip = currentOutstanding > 0
+		? `<span class="bmr-fin-chip">Current &nbsp;<strong>${cur(currentOutstanding)}</strong></span>`
+		: "";
+	const todayChip = isCurrent && kpi.revenue_today != null
+		? `<span class="bmr-fin-chip">Today &nbsp;<strong>${cur(kpi.revenue_today)}</strong></span>`
+		: "";
+
+	const finHtml = `<div class="bmr-fin-row">
+		<div class="bmr-fin-card bmr-fin-paid">
+			<div class="bmr-fin-left">
+				<div class="bmr-fin-icon">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+				</div>
+				<div>
+					<div class="bmr-fin-title">Revenue Collected</div>
+					<div class="bmr-fin-period">${periodLabel}</div>
+				</div>
+			</div>
+			<div class="bmr-fin-amount">${cur(kpi.revenue_month)}</div>
+			<div class="bmr-fin-footer">
+				${todayChip}
+			</div>
+		</div>
+		<div class="bmr-fin-card bmr-fin-out">
+			<div class="bmr-fin-left">
+				<div class="bmr-fin-icon">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+				</div>
+				<div>
+					<div class="bmr-fin-title">Outstanding</div>
+					<div class="bmr-fin-period">${periodLabel}</div>
+				</div>
+			</div>
+			<div class="bmr-fin-amount">${cur(kpi.outstanding_month)}</div>
+			<div class="bmr-fin-footer">
+				${overdueChip}${currentChip}
+			</div>
+		</div>
+	</div>`;
+
+	// Financial cards span full dashboard width (outside the KPI+HK top row)
+	$fullRoot.find(".bmr-top-row").after(finHtml);
 }
 
 // ── Housekeeping Board (panel with filter buttons) ────────────────────────────
@@ -872,26 +940,36 @@ function _open_new_reservation(hotel, roomId, calMonth, fromDay, toDay) {
 	const coDateObj = new Date(y, m - 1, toDay + 1);
 	const endDate   = coDateObj.getFullYear() + "-" + pad(coDateObj.getMonth() + 1) + "-" + pad(coDateObj.getDate());
 
-	window._bmr_room      = roomId;
-	window._bmr_hotel     = hotel;
-	window._bmr_check_in  = startDate + " 14:00:00";
-	window._bmr_check_out = endDate   + " 11:00:00";
+	const _doOpen = function (cin_time, cout_time) {
+		window._bmr_room      = roomId;
+		window._bmr_hotel     = hotel;
+		window._bmr_check_in  = cin_time  ? startDate + " " + cin_time  : startDate;
+		window._bmr_check_out = cout_time ? endDate   + " " + cout_time : endDate;
 
-	frappe.route_hooks.after_load = function (frm) {
-		if (window._bmr_hotel)     frm.set_value("hotel",     window._bmr_hotel);
-		if (window._bmr_check_in)  frm.set_value("check_in",  window._bmr_check_in);
-		if (window._bmr_check_out) frm.set_value("check_out", window._bmr_check_out);
-		if (window._bmr_room) {
-			frm.clear_table("items");
-			const row = frm.add_child("items");
-			frappe.model.set_value(row.doctype, row.name, "room", window._bmr_room);
-			frm.refresh_field("items");
-		}
-		delete window._bmr_room; delete window._bmr_hotel;
-		delete window._bmr_check_in; delete window._bmr_check_out;
-		frappe.route_hooks.after_load = null;
+		frappe.route_hooks.after_load = function (frm) {
+			if (window._bmr_hotel)     frm.set_value("hotel",     window._bmr_hotel);
+			if (window._bmr_check_in)  frm.set_value("check_in",  window._bmr_check_in);
+			if (window._bmr_check_out) frm.set_value("check_out", window._bmr_check_out);
+			if (window._bmr_room) {
+				frm.clear_table("items");
+				const row = frm.add_child("items");
+				frappe.model.set_value(row.doctype, row.name, "room", window._bmr_room);
+				frm.refresh_field("items");
+			}
+			delete window._bmr_room; delete window._bmr_hotel;
+			delete window._bmr_check_in; delete window._bmr_check_out;
+			frappe.route_hooks.after_load = null;
+		};
+		frappe.new_doc("Room Reservation");
 	};
-	frappe.new_doc("Room Reservation");
+
+	if (hotel) {
+		frappe.db.get_value("Hotel", hotel, ["checkin_time", "checkout_time"], function (r) {
+			_doOpen(r && r.checkin_time, r && r.checkout_time);
+		});
+	} else {
+		_doOpen(null, null);
+	}
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -945,8 +1023,8 @@ function _inject_styles() {
 .bmr-act-res{background:linear-gradient(135deg,#0ea5e9,#38bdf8);color:#fff}
 .bmr-act-res:hover{background:linear-gradient(135deg,#0284c7,#0ea5e9);box-shadow:0 4px 14px rgba(14,165,233,.35);transform:translateY(-1px)}
 
-/* KPI Row — 8 cards, no truncation */
-.bmr-kpi-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:22px}
+/* KPI Row — 6 cards, 3 per row (2 rows) */
+.bmr-kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:0}
 .bmr-kpi-card{
 	position:relative;border-radius:14px;
 	background:linear-gradient(180deg,#ffffff 0%,#f9fbff 100%);
@@ -973,6 +1051,44 @@ function _inject_styles() {
 /* Skeleton */
 .bmr-skeleton{height:90px;border:none!important;background:linear-gradient(90deg,#e2e8f0 25%,#f8fafc 50%,#e2e8f0 75%);background-size:200% 100%;animation:bmr-shimmer 1.4s infinite}
 @keyframes bmr-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* Financial Summary Cards */
+.bmr-fin-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:22px}
+.bmr-fin-card{
+	border-radius:16px;padding:20px 24px;display:flex;flex-direction:column;gap:12px;
+	border:1px solid rgba(0,0,0,.07);
+	box-shadow:0 2px 10px rgba(15,23,42,.07),0 1px 3px rgba(15,23,42,.05);
+	transition:box-shadow .2s,transform .2s;
+}
+.bmr-fin-card:hover{box-shadow:0 8px 28px rgba(15,23,42,.12);transform:translateY(-2px)}
+.bmr-fin-paid{background:linear-gradient(135deg,#f0fdf4 0%,#dcfce7 100%)}
+.bmr-fin-out{background:linear-gradient(135deg,#fef2f2 0%,#fee2e2 100%)}
+.bmr-fin-left{display:flex;align-items:center;gap:14px}
+.bmr-fin-icon{
+	width:48px;height:48px;flex-shrink:0;border-radius:14px;
+	display:flex;align-items:center;justify-content:center;
+}
+.bmr-fin-icon svg{width:22px;height:22px}
+.bmr-fin-paid .bmr-fin-icon{background:rgba(16,185,129,.18);color:#059669}
+.bmr-fin-out  .bmr-fin-icon{background:rgba(239,68,68,.15);color:#dc2626}
+.bmr-fin-title{font-size:14px;font-weight:700;color:#0f172a;letter-spacing:-.01em}
+.bmr-fin-period{font-size:11px;color:#64748b;margin-top:3px;font-weight:500;letter-spacing:.01em}
+.bmr-fin-amount{font-size:32px;font-weight:800;letter-spacing:-.06em;line-height:1}
+.bmr-fin-paid .bmr-fin-amount{color:#065f46}
+.bmr-fin-out  .bmr-fin-amount{color:#991b1b}
+.bmr-fin-footer{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.bmr-fin-chip{
+	display:inline-flex;align-items:center;gap:5px;
+	font-size:11.5px;font-weight:500;color:#475569;
+	padding:4px 12px;border-radius:20px;
+	background:rgba(255,255,255,.7);border:1px solid rgba(0,0,0,.08);
+	white-space:nowrap;
+}
+.bmr-fin-chip strong{font-weight:700;color:#0f172a}
+.bmr-fin-chip-red{background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.25);color:#b91c1c}
+.bmr-fin-chip-red strong{color:#7f1d1d}
+.bmr-fin-chip-green{background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.25);color:#065f46}
+@media(max-width:768px){.bmr-fin-row{grid-template-columns:1fr}.bmr-fin-amount{font-size:26px}}
 
 /* Housekeeping Board panel */
 .bmr-hkb-panel{
@@ -1157,11 +1273,13 @@ th.bmr-today-col{background:linear-gradient(180deg,#dbeafe,#eff6ff)!important;co
 @media(max-width:900px){
   .bmr-top-row{grid-template-columns:1fr}
   .bmr-hkb-panel{max-height:260px}
-  .bmr-kpi-row{grid-template-columns:repeat(4,1fr)}
+  .bmr-kpi-row{grid-template-columns:repeat(3,1fr)}
+  .bmr-fin-row{grid-template-columns:1fr}
   .bmr-ad-panels,.bmr-charts-row{grid-template-columns:1fr}
 }
 @media(max-width:600px){
   .bmr-kpi-row{grid-template-columns:repeat(2,1fr)}
+  .bmr-fin-amount{font-size:22px}
 }
 	`;
 	document.head.appendChild(s);

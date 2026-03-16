@@ -41,6 +41,7 @@
    "fieldname": "hotel",
    "fieldtype": "Link",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Hotel",
    "options": "Hotel",
    "reqd": 1
@@ -49,6 +50,7 @@
    "fieldname": "room_type",
    "fieldtype": "Link",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Room Type",
    "options": "Room Type",
    "reqd": 1
@@ -58,6 +60,7 @@
    "fieldname": "status",
    "fieldtype": "Select",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Status",
    "options": "Available\nOccupied\nVacant\nOut of Order\nMaintenance"
   },
@@ -80,6 +83,7 @@
    "fieldname": "housekeeping_status",
    "fieldtype": "Select",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Housekeeping Status",
    "options": "Clean\nDirty\nIn Progress\nInspected"
   },

@@ -5,7 +5,7 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.model.mapper import get_mapped_doc
-from frappe.utils import flt, format_datetime, getdate, nowdate
+from frappe.utils import flt, format_datetime, getdate, now_datetime, nowdate, time_diff_in_hours
 from frappe.utils import nowdate as _nowdate
 
 
@@ -22,12 +22,18 @@ class RoomReservation(Document):
 		self.validate_overlapping_bookings()
 
 	def on_submit(self):
-		self._update_room_status("Occupied")
+		# Rooms stay as-is until the guest physically arrives.
+		# do_check_in() is the only place that sets rooms to Occupied.
+		pass
 
 	def on_cancel(self):
-		self._update_room_status("Available")
+		# Only reset room status if the guest was actually checked in
+		if self.status == "Checked In":
+			self._update_room_status("Available")
 		if self.status not in ("Checked Out",):
 			self.db_set("cancellation_date", nowdate())
+		self._apply_cancellation_fee()
+		self._send_cancellation_email()
 
 	# ------------------------------------------------------------------ #
 	# Validation helpers
@@ -108,24 +114,50 @@ class RoomReservation(Document):
 			self.discount_amount = min(flt(self.discount_value or 0), subtotal)
 		else:
 			self.discount_amount = flt(subtotal * flt(self.discount_percentage or 0) / 100)
-		after_discount = subtotal - self.discount_amount
 
-		# --- Tax ---
-		tax_rate, tax_desc = self._get_tax_rate()
-		self.tax_amount = flt(after_discount * tax_rate / 100)
-		self.tax_description = tax_desc
+		# Split discount proportionally across room and meal components
+		discount_ratio = self.discount_amount / subtotal if subtotal else 0
+		room_after_discount = self.total_amount * (1 - discount_ratio)
+		meal_after_discount = self.meal_plan_amount * (1 - discount_ratio)
+
+		# --- Tax: room and meal calculated at their own rates ---
+		room_tax_rate, room_tax_desc = self._get_tax_rate()
+		room_tax = flt(room_after_discount * room_tax_rate / 100)
+
+		meal_tax_rate = self._get_meal_tax_rate() if meal_after_discount else 0.0
+		meal_tax = flt(meal_after_discount * meal_tax_rate / 100)
+
+		self.tax_amount = room_tax + meal_tax
+
+		# Build a clear tax description
+		if meal_tax_rate and meal_after_discount:
+			self.tax_description = _("{0} on rooms; {1}% on meal plan").format(
+				room_tax_desc, meal_tax_rate
+			)
+		else:
+			self.tax_description = room_tax_desc
 
 		# --- Grand total & balance ---
+		after_discount = subtotal - self.discount_amount
 		self.grand_total = after_discount + self.tax_amount
 		self.balance_due = flt(self.grand_total) - flt(self.advance_amount or 0)
 
 	def _get_tax_rate(self):
-		"""Return (tax_rate_pct, description) from configured tax slabs in Booking Settings."""
+		"""Return (tax_rate_pct, description) for room charges from configured tax slabs."""
 		rates = [flt(row.rate) for row in self.get("items") if flt(row.rate) > 0]
 		if not rates:
 			return 0.0, ""
 		avg_rate = sum(rates) / len(rates)
 		return _tax_rate_for_tariff(avg_rate)
+
+	def _get_meal_tax_rate(self):
+		"""Return effective tax rate (%) for the meal plan's billing item."""
+		if not self.meal_plan:
+			return 0.0
+		billing_item = frappe.db.get_value("Meal Plan", self.meal_plan, "billing_item")
+		if not billing_item:
+			return 0.0
+		return _effective_tax_rate_for_item(billing_item)
 
 	def validate_overlapping_bookings(self):
 		"""
@@ -183,6 +215,63 @@ class RoomReservation(Document):
 			if row.room:
 				frappe.db.set_value("Room", row.room, "status", status)
 
+	def _apply_cancellation_fee(self):
+		"""Calculate and store cancellation fee based on Booking Settings policy."""
+		fee_type = frappe.db.get_single_value("Booking Settings", "cancellation_fee_type") or "None"
+		if fee_type == "None":
+			return
+
+		free_hours = flt(frappe.db.get_single_value("Booking Settings", "free_cancellation_hours") or 24)
+		hours_to_checkin = time_diff_in_hours(self.check_in, now_datetime())
+
+		# Within free cancellation window — no fee
+		if hours_to_checkin >= free_hours:
+			return
+
+		fee = 0.0
+		if fee_type == "Fixed Amount":
+			fee = flt(frappe.db.get_single_value("Booking Settings", "cancellation_fee_value") or 0)
+		elif fee_type == "First Night Rate":
+			fee = sum(flt(row.rate) for row in self.get("items"))
+
+		if fee:
+			frappe.db.set_value("Room Reservation", self.name, "cancellation_fee", fee)
+			frappe.msgprint(
+				_("Cancellation fee of {0} applied (late cancellation).").format(
+					frappe.utils.fmt_money(fee)
+				),
+				indicator="orange",
+				alert=True,
+			)
+
+	def _send_cancellation_email(self):
+		"""Send cancellation confirmation email to the customer."""
+		if not self.customer:
+			return
+		email = frappe.db.get_value("Customer", self.customer, "email_id")
+		if not email:
+			return
+		try:
+			frappe.sendmail(
+				recipients=[email],
+				subject=_("Reservation Cancellation — {0}").format(self.name),
+				message=_(
+					"Dear {0},<br><br>"
+					"Your reservation <b>{1}</b> has been cancelled.<br>"
+					"Check-in: {2} &nbsp;|&nbsp; Check-out: {3}<br><br>"
+					"If you have any questions, please contact us.<br><br>"
+					"Regards,<br>{4}"
+				).format(
+					self.customer,
+					self.name,
+					frappe.utils.format_datetime(self.check_in, "dd-MM-yyyy HH:mm"),
+					frappe.utils.format_datetime(self.check_out, "dd-MM-yyyy HH:mm"),
+					frappe.defaults.get_defaults().get("company") or "",
+				),
+			)
+		except Exception:
+			pass  # Email failure must never block cancellation
+
 	def _create_housekeeping_log(self, room):
 		hotel = frappe.db.get_value("Room", room, "hotel")
 		log = frappe.new_doc("Housekeeping Log")
@@ -238,6 +327,106 @@ class RoomReservation(Document):
 		)
 
 	@frappe.whitelist()
+	def extend_stay(self, new_check_out):
+		"""Extend the check-out date for a currently checked-in guest."""
+		if self.status != "Checked In":
+			frappe.throw(_("Only 'Checked In' reservations can be extended."))
+
+		new_co = getdate(str(new_check_out).split(" ")[0])
+		cur_co = getdate(str(self.check_out).split(" ")[0])
+		if new_co <= cur_co:
+			frappe.throw(_("New check-out must be later than the current check-out ({0}).").format(
+				frappe.utils.formatdate(cur_co)
+			))
+
+		# Check for overlapping bookings in the extension window
+		room_names = [row.room for row in self.get("items") if row.room]
+		if room_names:
+			rr = frappe.qb.DocType("Room Reservation")
+			rri = frappe.qb.DocType("Room Reservation Item")
+			conflicts = (
+				frappe.qb.from_(rr)
+				.inner_join(rri).on(rr.name == rri.parent)
+				.select(rr.name, rri.room)
+				.where(rri.room.isin(room_names))
+				.where(rr.name != self.name)
+				.where(rr.docstatus < 2)
+				.where(rr.status.notin(["Cancelled", "Checked Out", "No Show"]))
+				.where(rr.check_in < new_check_out)
+				.where(rr.check_out > self.check_out)
+			).run(as_dict=True)
+			if conflicts:
+				c = conflicts[0]
+				frappe.throw(
+					_("Cannot extend: Room {0} is already reserved in {1} during the extension period.").format(
+						frappe.bold(c.room), frappe.bold(c.name)
+					)
+				)
+
+		# Recalculate totals with new check-out
+		self.check_out = new_check_out
+		self.calculate_totals()
+
+		for row in self.get("items"):
+			frappe.db.set_value("Room Reservation Item", row.name, "amount", row.amount)
+
+		frappe.db.set_value("Room Reservation", self.name, {
+			"check_out": new_check_out,
+			"total_nights": self.total_nights,
+			"total_amount": self.total_amount,
+			"meal_plan_amount": self.meal_plan_amount,
+			"discount_amount": self.discount_amount,
+			"tax_amount": self.tax_amount,
+			"grand_total": self.grand_total,
+			"balance_due": self.balance_due,
+		})
+		frappe.db.commit()
+		frappe.publish_realtime(
+			"doc_update",
+			{"doctype": "Room Reservation", "name": self.name},
+			doctype="Room Reservation",
+			docname=self.name,
+		)
+		frappe.msgprint(
+			_("Stay extended to {0}. New total: {1}.").format(
+				frappe.utils.formatdate(new_co),
+				frappe.utils.fmt_money(self.grand_total),
+			),
+			indicator="green",
+			alert=True,
+		)
+
+	@frappe.whitelist()
+	def make_advance_payment_entry(self):
+		"""Create a draft Payment Entry for the advance amount."""
+		if not flt(self.advance_amount):
+			frappe.throw(_("Please set an Advance Amount before creating a payment entry."))
+		if self.advance_payment_entry and frappe.db.exists("Payment Entry", self.advance_payment_entry):
+			frappe.throw(
+				_("A payment entry {0} already exists for this reservation.").format(
+					frappe.bold(self.advance_payment_entry)
+				)
+			)
+
+		pe = frappe.new_doc("Payment Entry")
+		pe.payment_type = "Receive"
+		pe.party_type = "Customer"
+		pe.party = self.customer
+		pe.company = self.company
+		pe.paid_amount = flt(self.advance_amount)
+		pe.received_amount = flt(self.advance_amount)
+		pe.posting_date = self.advance_payment_date or nowdate()
+		pe.reference_date = self.advance_payment_date or nowdate()
+		if self.advance_payment_mode:
+			pe.mode_of_payment = self.advance_payment_mode
+		pe.remarks = _("Advance payment for Room Reservation {0}").format(self.name)
+		pe.insert(ignore_permissions=True)
+
+		frappe.db.set_value("Room Reservation", self.name, "advance_payment_entry", pe.name)
+		frappe.db.commit()
+		return pe.name
+
+	@frappe.whitelist()
 	def mark_no_show(self):
 		"""Mark the reservation as a No Show and free the rooms."""
 		if self.status != "Booked":
@@ -263,6 +452,24 @@ def _get_item_tax_template(item_code):
 		{"parent": item_code, "parenttype": "Item"},
 		"item_tax_template",
 	)
+
+
+def _effective_tax_rate_for_item(item_code):
+	"""Return the effective GST rate (%) for an item by reading gst_rate
+	directly from its Item Tax Template — the canonical single source of truth."""
+	if not item_code:
+		return 0.0
+
+	template_name = frappe.db.get_value(
+		"Item Tax",
+		{"parent": item_code, "parenttype": "Item"},
+		"item_tax_template",
+		order_by="idx asc",
+	)
+	if not template_name:
+		return 0.0
+
+	return flt(frappe.db.get_value("Item Tax Template", template_name, "gst_rate") or 0)
 
 
 def _get_tax_slabs():
@@ -446,6 +653,34 @@ def make_combined_invoice(source_name):
 	if reservation.docstatus != 1:
 		frappe.throw(_("Please submit the reservation before billing."))
 
+	# ── Pre-validate ALL billing items before building the document ───────── #
+	errors = []
+	for row in reservation.get("items"):
+		if row.room_type and not frappe.db.get_value("Room Type", row.room_type, "billing_item"):
+			errors.append(_("Room Type <b>{0}</b> has no Billing Item configured.").format(row.room_type))
+
+	open_folios_for_validation = frappe.get_all(
+		"Guest Folio",
+		filters={"reservation": source_name, "status": "Open"},
+		fields=["name"],
+	)
+	for folio_info in open_folios_for_validation:
+		folio_doc = frappe.get_doc("Guest Folio", folio_info["name"])
+		for item in folio_doc.get("items"):
+			if item.service:
+				billing_item = frappe.db.get_value("Hotel Service", item.service, "billing_item")
+				if not billing_item:
+					errors.append(
+						_("Hotel Service <b>{0}</b> (Folio {1}) has no Billing Item set.").format(
+							item.service, folio_info["name"]
+						)
+					)
+	if errors:
+		frappe.throw(
+			_("Cannot create invoice. Fix the following issues first:<br>") + "<br>".join(errors),
+			title=_("Missing Billing Items"),
+		)
+
 	si = frappe.new_doc("Sales Invoice")
 	si.customer = reservation.customer
 	si.company = reservation.company
@@ -493,13 +728,6 @@ def make_combined_invoice(source_name):
 			billing_item = None
 			if item.service:
 				billing_item = frappe.db.get_value("Hotel Service", item.service, "billing_item")
-			if not billing_item:
-				frappe.throw(
-					_(
-						"Hotel Service <b>{0}</b> has no Billing Item set. "
-						"Please configure it before billing."
-					).format(item.service or _("Unknown"))
-				)
 			# Fetch tax template from the Item master (service items have their own rate)
 			svc_tax_template = _get_item_tax_template(billing_item)
 			si.append(
@@ -547,7 +775,11 @@ def make_combined_invoice(source_name):
 	si.bmr_reservation = source_name
 	si.run_method("set_missing_values")
 	si.run_method("calculate_taxes_and_totals")
-	si.insert(ignore_permissions=True)
+	try:
+		si.insert(ignore_permissions=True)
+	except Exception as e:
+		frappe.db.rollback()
+		frappe.throw(_("Failed to create Sales Invoice: {0}").format(str(e)))
 	return si.name
 
 

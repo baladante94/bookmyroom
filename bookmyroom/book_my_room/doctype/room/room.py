@@ -13,6 +13,32 @@ class Room(Document):
 		if self.capacity and self.capacity < 1:
 			frappe.throw(_("Room capacity must be at least 1."), title=_("Invalid Capacity"))
 
+	def after_insert(self):
+		_sync_room_type_total(self.room_type)
+
+	def on_update(self):
+		# Handle room_type changes: update both old and new room type counts
+		old_room_type = self.get_doc_before_save() and self.get_doc_before_save().room_type
+		if old_room_type and old_room_type != self.room_type:
+			_sync_room_type_total(old_room_type)
+		_sync_room_type_total(self.room_type)
+
+	def after_delete(self):
+		_sync_room_type_total(self.room_type)
+
+
+def _sync_room_type_total(room_type):
+	if not room_type:
+		return
+	count = frappe.db.count("Room", {"room_type": room_type})
+	frappe.db.set_value("Room Type", room_type, "total_rooms", count)
+	frappe.publish_realtime(
+		"doc_update",
+		{"doctype": "Room Type", "name": room_type},
+		doctype="Room Type",
+		docname=room_type,
+	)
+
 
 @frappe.whitelist()
 def get_room_calendar_events(start, end, filters=None):

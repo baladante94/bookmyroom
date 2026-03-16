@@ -52,15 +52,22 @@ frappe.ui.form.on("Room Reservation", {
 		frappe.db
 			.get_value("Hotel", frm.doc.hotel, ["checkin_time", "checkout_time"])
 			.then(({ message }) => {
-				const cin_time = message?.checkin_time || "14:00:00";
-				const cout_time = message?.checkout_time || "12:00:00";
-				const today = frappe.datetime.get_today();
-				const tomorrow = frappe.datetime.add_days(today, 1);
-				const cin_date = frm.doc.check_in ? frm.doc.check_in.split(" ")[0] : today;
-				const cout_date = frm.doc.check_out ? frm.doc.check_out.split(" ")[0] : tomorrow;
+				const cin_time = message?.checkin_time;
+				const cout_time = message?.checkout_time;
 
-				_set_datetime_with_picker(frm, "check_in", cin_date + " " + cin_time);
-				_set_datetime_with_picker(frm, "check_out", cout_date + " " + cout_time);
+				if (cin_time) {
+					const cin_date = frm.doc.check_in
+						? frm.doc.check_in.split(" ")[0]
+						: frappe.datetime.get_today();
+					_set_datetime_with_picker(frm, "check_in", cin_date + " " + cin_time);
+				}
+
+				if (cout_time) {
+					const cout_date = frm.doc.check_out
+						? frm.doc.check_out.split(" ")[0]
+						: frappe.datetime.add_days(frappe.datetime.get_today(), 1);
+					_set_datetime_with_picker(frm, "check_out", cout_date + " " + cout_time);
+				}
 
 				frm.trigger("calculate_totals");
 			});
@@ -381,11 +388,32 @@ function _refreshActionButtons(frm) {
 				() => frappe.call({ method: "mark_no_show", doc: frm.doc }).then(() => frm.reload_doc())
 			);
 		});
+
+		// Record Advance Payment — only if advance amount is set and no PE linked yet
+		if (flt(frm.doc.advance_amount) > 0 && !frm.doc.advance_payment_entry) {
+			frm.add_custom_button(__("Record Advance"), () => {
+				frappe.confirm(
+					__("Create a Payment Entry for the advance amount of {0}?", [
+						format_currency(frm.doc.advance_amount),
+					]),
+					() => {
+						frappe
+							.call({ method: "make_advance_payment_entry", doc: frm.doc })
+							.then(({ message }) => {
+								if (message) {
+									frappe.set_route("Form", "Payment Entry", message);
+								}
+							});
+					}
+				);
+			}, __("Create"));
+		}
 	}
 
 	// ── Post Service Charge (during stay) ────────────────────────────────── //
 	if (isSubmitted && status === "Checked In") {
 		frm.add_custom_button(__("Post Service Charge"), () => _openFolioDialog(frm));
+		frm.add_custom_button(__("Extend Stay"), () => _openExtendStayDialog(frm));
 	}
 
 	// ── Check Out ────────────────────────────────────────────────────────── //
@@ -603,6 +631,46 @@ function _updateBalanceColor(frm) {
 	if (!frm.fields_dict.balance_due) return;
 	const $field = frm.fields_dict.balance_due.$wrapper;
 	$field.find(".control-value").css("color", balance > 0 ? "var(--red-600)" : "var(--green-600)");
+}
+
+function _openExtendStayDialog(frm) {
+	const currentCheckOut = frm.doc.check_out ? frm.doc.check_out.split(" ")[0] : "";
+	const currentTime = frm.doc.check_out ? frm.doc.check_out.split(" ")[1] || "11:00:00" : "11:00:00";
+
+	const dialog = new frappe.ui.Dialog({
+		title: __("Extend Stay"),
+		fields: [
+			{
+				label: __("Current Check-Out"),
+				fieldname: "current_check_out",
+				fieldtype: "Data",
+				read_only: 1,
+				default: frm.doc.check_out || "",
+			},
+			{
+				label: __("New Check-Out Date"),
+				fieldname: "new_check_out_date",
+				fieldtype: "Date",
+				reqd: 1,
+				default: frappe.datetime.add_days(currentCheckOut, 1),
+			},
+		],
+		primary_action_label: __("Extend"),
+		primary_action(values) {
+			const newCheckOut = values.new_check_out_date + " " + currentTime;
+			frappe
+				.call({
+					method: "extend_stay",
+					doc: frm.doc,
+					args: { new_check_out: newCheckOut },
+				})
+				.then(() => {
+					dialog.hide();
+					frm.reload_doc();
+				});
+		},
+	});
+	dialog.show();
 }
 
 function _set_datetime_with_picker(frm, fieldname, value) {

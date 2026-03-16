@@ -151,29 +151,52 @@ def get_calendar_data(hotel=None, from_date=None, to_date=None):
 # ── New KPI + chart endpoints ─────────────────────────────────────────────── #
 
 @frappe.whitelist()
-def get_dashboard_kpis(hotel=None):
-	"""Return all KPI numbers for the dashboard header cards in one request."""
+def get_dashboard_kpis(hotel=None, from_date=None, to_date=None):
+	"""Return all KPI numbers for the dashboard header cards in one request.
+	from_date / to_date define the period (defaults to current month up to today)."""
 	t = today()
-	month_start = get_first_day(t).strftime("%Y-%m-%d")
+
+	# Resolve period
+	period_start = from_date or get_first_day(t).strftime("%Y-%m-%d")
+	period_end   = to_date   or t
+
+	# Is the selected period the current month?
+	is_current_month = (period_start[:7] == t[:7])
+
 	base = {"docstatus": 1}
 	if hotel:
 		base["hotel"] = hotel
 
-	checkins_today = frappe.db.count("Room Reservation", {
+	# Check-ins/outs for the period
+	checkins = frappe.db.count("Room Reservation", {
+		**base,
+		"check_in": ["between", [period_start + " 00:00:00", period_end + " 23:59:59"]],
+		"status": ["in", ["Booked", "Checked In"]],
+	})
+	checkouts = frappe.db.count("Room Reservation", {
+		**base,
+		"check_out": ["between", [period_start + " 00:00:00", period_end + " 23:59:59"]],
+		"status": ["in", ["Checked In", "Checked Out"]],
+	})
+
+	# Today-specific (only meaningful on current month view)
+	checkins_today  = frappe.db.count("Room Reservation", {
 		**base,
 		"check_in": ["between", [t + " 00:00:00", t + " 23:59:59"]],
 		"status": ["in", ["Booked", "Checked In"]],
-	})
+	}) if is_current_month else None
 	checkouts_today = frappe.db.count("Room Reservation", {
 		**base,
 		"check_out": ["between", [t + " 00:00:00", t + " 23:59:59"]],
 		"status": ["in", ["Checked In", "Checked Out"]],
-	})
+	}) if is_current_month else None
+
+	# Real-time room state (always current, not period-scoped)
 	occupied = frappe.db.count("Room Reservation", {**base, "status": "Checked In"})
-	booked = frappe.db.count("Room Reservation", {**base, "status": "Booked"})
+	booked   = frappe.db.count("Room Reservation", {**base, "status": "Booked"})
 
 	room_f = {"hotel": hotel} if hotel else {}
-	total_rooms    = frappe.db.count("Room", room_f)
+	total_rooms     = frappe.db.count("Room", room_f)
 	available_rooms = frappe.db.count("Room", {**room_f, "status": "Available"})
 	occupied_rooms  = frappe.db.count("Room", {**room_f, "status": "Occupied"})
 	vacant_clean    = frappe.db.count("Room", {**room_f, "status": "Vacant", "housekeeping_status": "Clean"})
@@ -182,39 +205,78 @@ def get_dashboard_kpis(hotel=None):
 	in_maintenance  = frappe.db.count("Room", {**room_f, "status": "Maintenance"})
 
 	si = frappe.qb.DocType("Sales Invoice")
-	rev_today_row = (
-		frappe.qb.from_(si)
-		.select(Sum(si.grand_total))
-		.where(si.docstatus == 1)
-		.where(si.posting_date == t)
-		.run()
-	)
-	revenue_today = flt((rev_today_row or [[0]])[0][0])
 
-	rev_month_row = (
+	# Revenue collected (paid) for the period
+	rev_period_row = (
 		frappe.qb.from_(si)
 		.select(Sum(si.grand_total))
 		.where(si.docstatus == 1)
-		.where(si.posting_date >= month_start)
+		.where(si.status == "Paid")
+		.where(si.posting_date >= period_start)
+		.where(si.posting_date <= period_end)
 		.run()
 	)
-	revenue_month = flt((rev_month_row or [[0]])[0][0])
+	revenue_month = flt((rev_period_row or [[0]])[0][0])
+
+	# Revenue today (only on current-month view)
+	if is_current_month:
+		rev_today_row = (
+			frappe.qb.from_(si)
+			.select(Sum(si.grand_total))
+			.where(si.docstatus == 1)
+			.where(si.status == "Paid")
+			.where(si.posting_date == t)
+			.run()
+		)
+		revenue_today = flt((rev_today_row or [[0]])[0][0])
+	else:
+		revenue_today = None
+
+	# Outstanding for the period
+	outstanding_row = (
+		frappe.qb.from_(si)
+		.select(Sum(si.outstanding_amount))
+		.where(si.docstatus == 1)
+		.where(si.status.isin(["Unpaid", "Overdue", "Partly Paid"]))
+		.where(si.posting_date >= period_start)
+		.where(si.posting_date <= period_end)
+		.run()
+	)
+	outstanding_month = flt((outstanding_row or [[0]])[0][0])
+
+	# Overdue = past due_date anywhere (not period-scoped — always relevant)
+	overdue_row = (
+		frappe.qb.from_(si)
+		.select(Sum(si.outstanding_amount))
+		.where(si.docstatus == 1)
+		.where(si.outstanding_amount > 0)
+		.where(si.due_date < t)
+		.run()
+	)
+	overdue_amount = flt((overdue_row or [[0]])[0][0])
 
 	return {
-		"checkins_today":  checkins_today or 0,
-		"checkouts_today": checkouts_today or 0,
-		"occupied":        occupied or 0,
-		"booked":          booked or 0,
-		"available_rooms": available_rooms or 0,
-		"total_rooms":     total_rooms or 0,
-		"occupied_rooms":  occupied_rooms or 0,
-		"occupancy_pct":   round(occupied_rooms / total_rooms * 100) if total_rooms else 0,
-		"revenue_today":   revenue_today,
-		"revenue_month":   revenue_month,
-		"vacant_clean":    vacant_clean or 0,
-		"vacant_dirty":    vacant_dirty or 0,
-		"out_of_order":    out_of_order or 0,
-		"in_maintenance":  in_maintenance or 0,
+		"checkins":          checkins or 0,
+		"checkouts":         checkouts or 0,
+		"checkins_today":    checkins_today,   # None when viewing other months
+		"checkouts_today":   checkouts_today,  # None when viewing other months
+		"occupied":          occupied or 0,
+		"booked":            booked or 0,
+		"available_rooms":   available_rooms or 0,
+		"total_rooms":       total_rooms or 0,
+		"occupied_rooms":    occupied_rooms or 0,
+		"occupancy_pct":     round(occupied_rooms / total_rooms * 100) if total_rooms else 0,
+		"revenue_today":     revenue_today,    # None when viewing other months
+		"revenue_month":     revenue_month,
+		"outstanding_month": outstanding_month,
+		"overdue_amount":    overdue_amount,
+		"period_start":      period_start,
+		"period_end":        period_end,
+		"is_current_month":  is_current_month,
+		"vacant_clean":      vacant_clean or 0,
+		"vacant_dirty":      vacant_dirty or 0,
+		"out_of_order":      out_of_order or 0,
+		"in_maintenance":    in_maintenance or 0,
 	}
 
 
@@ -313,6 +375,7 @@ def nc_revenue_this_month(**kwargs):
 		frappe.qb.from_(si)
 		.select(Sum(si.grand_total))
 		.where(si.docstatus == 1)
+		.where(si.status == "Paid")
 		.where(si.posting_date >= month_start)
 		.run()
 	)
