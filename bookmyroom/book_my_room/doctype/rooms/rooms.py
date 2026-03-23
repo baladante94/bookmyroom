@@ -8,7 +8,7 @@ from frappe import _
 from frappe.model.document import Document
 
 
-class Room(Document):
+class Rooms(Document):
 	def validate(self):
 		if self.capacity and self.capacity < 1:
 			frappe.throw(_("Room capacity must be at least 1."), title=_("Invalid Capacity"))
@@ -30,7 +30,7 @@ class Room(Document):
 def _sync_room_type_total(room_type):
 	if not room_type:
 		return
-	count = frappe.db.count("Room", {"room_type": room_type})
+	count = frappe.db.count("Rooms", {"room_type": room_type})
 	frappe.db.set_value("Room Type", room_type, "total_rooms", count)
 	frappe.publish_realtime(
 		"doc_update",

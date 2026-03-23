@@ -76,7 +76,7 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Room",
-   "options": "Room",
+   "options": "Rooms",
    "reqd": 1
   },
   {

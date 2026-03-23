@@ -348,7 +348,7 @@ def create_rooms():
 	for r in ROOMS_RESIDENCY:
 		_insert(
 			{
-				"doctype": "Room",
+				"doctype": "Rooms",
 				"hotel": "Residency Hotel",
 				"status": "Available",
 				"housekeeping_status": "Clean",
@@ -362,7 +362,7 @@ def create_rooms():
 	for r in ROOMS_TOWER2:
 		_insert(
 			{
-				"doctype": "Room",
+				"doctype": "Rooms",
 				"hotel": "Residency Tower 2",
 				"status": "Available",
 				"housekeeping_status": "Clean",

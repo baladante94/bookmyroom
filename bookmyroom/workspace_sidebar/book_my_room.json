@@ -96,8 +96,8 @@
    "icon": "door-open",
    "indent": 0,
    "keep_closed": 0,
-   "label": "Room",
-   "link_to": "Room",
+   "label": "Rooms",
+   "link_to": "Rooms",
    "link_type": "DocType",
    "show_arrow": 0,
    "type": "Link"
@@ -199,7 +199,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-03-07 20:13:23.982729",
+ "modified": "2026-03-23 11:47:40.950682",
  "modified_by": "Administrator",
  "module": "Book My Room",
  "name": "Book My Room",

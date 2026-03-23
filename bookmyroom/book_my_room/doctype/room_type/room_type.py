@@ -7,4 +7,4 @@ from frappe.model.document import Document
 
 class RoomType(Document):
 	def before_save(self):
-		self.total_rooms = frappe.db.count("Room", {"room_type": self.name})
+		self.total_rooms = frappe.db.count("Rooms", {"room_type": self.name})

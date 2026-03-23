@@ -77,7 +77,7 @@ def auto_generate_housekeeping_tasks():
 	today = nowdate()
 
 	occupied_rooms = frappe.get_all(
-		"Room",
+		"Rooms",
 		filters={"status": "Occupied"},
 		fields=["name", "hotel"],
 	)

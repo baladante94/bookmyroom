@@ -248,7 +248,7 @@ frappe.ui.form.on("Room Reservation Item", {
 		if (!row.room) return;
 
 		frappe.db
-			.get_value("Room", row.room, ["room_type", "hotel"])
+			.get_value("Rooms", row.room, ["room_type", "hotel"])
 			.then(({ message }) => {
 				if (!message?.room_type) return;
 				frappe.model.set_value(cdt, cdn, "room_type", message.room_type);

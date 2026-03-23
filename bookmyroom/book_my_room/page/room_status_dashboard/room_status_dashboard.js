@@ -580,7 +580,7 @@ function _render_room_chips($root, rooms) {
 		const res  = $(this).data("res");
 		const room = $(this).data("room");
 		if (res)  frappe.set_route("Form", "Room Reservation", res);
-		else if (room) frappe.set_route("Form", "Room", room);
+		else if (room) frappe.set_route("Form", "Rooms", room);
 	});
 }
 

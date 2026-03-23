@@ -17,7 +17,7 @@ def get_room_status_data(hotel=None):
 		filters["hotel"] = hotel
 
 	rooms = frappe.get_all(
-		"Room",
+		"Rooms",
 		filters=filters,
 		fields=[
 			"name",
@@ -196,13 +196,13 @@ def get_dashboard_kpis(hotel=None, from_date=None, to_date=None):
 	booked   = frappe.db.count("Room Reservation", {**base, "status": "Booked"})
 
 	room_f = {"hotel": hotel} if hotel else {}
-	total_rooms     = frappe.db.count("Room", room_f)
-	available_rooms = frappe.db.count("Room", {**room_f, "status": "Available"})
-	occupied_rooms  = frappe.db.count("Room", {**room_f, "status": "Occupied"})
-	vacant_clean    = frappe.db.count("Room", {**room_f, "status": "Vacant", "housekeeping_status": "Clean"})
-	vacant_dirty    = frappe.db.count("Room", {**room_f, "status": "Vacant", "housekeeping_status": "Dirty"})
-	out_of_order    = frappe.db.count("Room", {**room_f, "status": "Out of Order"})
-	in_maintenance  = frappe.db.count("Room", {**room_f, "status": "Maintenance"})
+	total_rooms     = frappe.db.count("Rooms", room_f)
+	available_rooms = frappe.db.count("Rooms", {**room_f, "status": "Available"})
+	occupied_rooms  = frappe.db.count("Rooms", {**room_f, "status": "Occupied"})
+	vacant_clean    = frappe.db.count("Rooms", {**room_f, "status": "Vacant", "housekeeping_status": "Clean"})
+	vacant_dirty    = frappe.db.count("Rooms", {**room_f, "status": "Vacant", "housekeeping_status": "Dirty"})
+	out_of_order    = frappe.db.count("Rooms", {**room_f, "status": "Out of Order"})
+	in_maintenance  = frappe.db.count("Rooms", {**room_f, "status": "Maintenance"})
 
 	si = frappe.qb.DocType("Sales Invoice")
 
@@ -388,7 +388,7 @@ def get_housekeeping_board(hotel=None):
 	t = today()
 	room_f = {"hotel": hotel} if hotel else {}
 	rooms = frappe.get_all(
-		"Room",
+		"Rooms",
 		filters=room_f,
 		fields=["name", "room_name", "floor", "status", "housekeeping_status"],
 		order_by="floor asc, room_name asc",
@@ -464,8 +464,8 @@ def quick_update_reservation(reservation, check_out=None, new_room=None, old_roo
 
 		res = frappe.get_doc("Room Reservation", reservation)
 		if res.status == "Checked In":
-			frappe.db.set_value("Room", old_room, "status", "Vacant")
-			frappe.db.set_value("Room", new_room, "status", "Occupied")
+			frappe.db.set_value("Rooms", old_room, "status", "Vacant")
+			frappe.db.set_value("Rooms", new_room, "status", "Occupied")
 
 	frappe.db.commit()
 	frappe.publish_realtime(
@@ -488,7 +488,7 @@ def quick_checkin(reservation):
 		filters={"parent": reservation}, fields=["room"])
 	for item in items:
 		if item.room:
-			frappe.db.set_value("Room", item.room, "status", "Occupied")
+			frappe.db.set_value("Rooms", item.room, "status", "Occupied")
 	frappe.db.commit()
 	return {"ok": True}
 
@@ -504,7 +504,7 @@ def quick_checkout(reservation):
 		filters={"parent": reservation}, fields=["room"])
 	for item in items:
 		if item.room:
-			frappe.db.set_value("Room", item.room, {
+			frappe.db.set_value("Rooms", item.room, {
 				"status": "Vacant",
 				"housekeeping_status": "Dirty",
 			})

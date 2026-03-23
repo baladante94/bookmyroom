@@ -37,7 +37,7 @@
     "doctype": "Number Card",
     "name": "BMR Available Rooms",
     "label": "Available Rooms",
-    "document_type": "Room",
+    "document_type": "Rooms",
     "type": "Document Type",
     "filters_json": "[{\"fieldname\":\"status\",\"filter_type\":\"Equals\",\"value\":\"Available\",\"label\":\"Status\"}]",
     "function": "Count",

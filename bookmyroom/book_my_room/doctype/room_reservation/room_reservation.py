@@ -68,7 +68,7 @@ class RoomReservation(Document):
 		for row in self.get("items"):
 			if not row.room:
 				continue
-			capacity = frappe.db.get_value("Room", row.room, "capacity") or 0
+			capacity = frappe.db.get_value("Rooms", row.room, "capacity") or 0
 			if capacity and total_guests > capacity:
 				frappe.throw(
 					_("Room {0} has a maximum capacity of {1} guest(s), but {2} guest(s) are booked."
@@ -213,7 +213,7 @@ class RoomReservation(Document):
 	def _update_room_status(self, status):
 		for row in self.get("items"):
 			if row.room:
-				frappe.db.set_value("Room", row.room, "status", status)
+				frappe.db.set_value("Rooms", row.room, "status", status)
 
 	def _apply_cancellation_fee(self):
 		"""Calculate and store cancellation fee based on Booking Settings policy."""
@@ -273,7 +273,7 @@ class RoomReservation(Document):
 			pass  # Email failure must never block cancellation
 
 	def _create_housekeeping_log(self, room):
-		hotel = frappe.db.get_value("Room", room, "hotel")
+		hotel = frappe.db.get_value("Rooms", room, "hotel")
 		log = frappe.new_doc("Housekeeping Log")
 		log.room = room
 		log.hotel = hotel
@@ -316,7 +316,7 @@ class RoomReservation(Document):
 		hk_tasks = []
 		for row in self.get("items"):
 			if row.room:
-				frappe.db.set_value("Room", row.room, "housekeeping_status", "Dirty")
+				frappe.db.set_value("Rooms", row.room, "housekeeping_status", "Dirty")
 				task_name = self._create_housekeeping_log(row.room)
 				hk_tasks.append(task_name)
 
@@ -827,7 +827,7 @@ def get_available_rooms(hotel, check_in, check_out, room_type=None):
 		filters["room_type"] = room_type
 
 	rooms = frappe.get_all(
-		"Room",
+		"Rooms",
 		filters=filters,
 		fields=["name", "room_type", "floor", "capacity", "bed_type", "view_type", "smoking"],
 		order_by="name asc",
@@ -875,7 +875,7 @@ def get_rooms_for_query(doctype, txt, searchfield, start, page_len, filters, as_
 	check_out = filters.get("check_out") or ""
 	current_reservation = filters.get("current_reservation") or ""
 
-	r = frappe.qb.DocType("Room")
+	r = frappe.qb.DocType("Rooms")
 
 	# Hotel rooms that are bookable (exclude permanently unavailable statuses only)
 	query = (

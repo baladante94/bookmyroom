@@ -4,7 +4,7 @@
 // Calendar view for Room: shows Room Reservation events
 // Each bar represents a guest stay on a particular room.
 
-frappe.views.calendar["Room"] = {
+frappe.views.calendar["Rooms"] = {
 	field_map: {
 		start: "start",
 		end: "end",
@@ -15,6 +15,6 @@ frappe.views.calendar["Room"] = {
 	},
 	gantt: false,
 	get_events_method:
-		"bookmyroom.book_my_room.doctype.room.room.get_room_calendar_events",
+		"bookmyroom.book_my_room.doctype.rooms.rooms.get_room_calendar_events",
 	doctype: "Room Reservation",
 };

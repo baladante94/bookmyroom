@@ -29,7 +29,7 @@ class HousekeepingLog(Document):
 		}
 		hk_status = hk_status_map.get(self.status)
 		if hk_status and self.room:
-			frappe.db.set_value("Room", self.room, "housekeeping_status", hk_status)
+			frappe.db.set_value("Rooms", self.room, "housekeeping_status", hk_status)
 			if self.status == "Completed":
 				# Room is clean — mark Available so it shows as ready for reservations
-				frappe.db.set_value("Room", self.room, "status", "Available")
+				frappe.db.set_value("Rooms", self.room, "status", "Available")

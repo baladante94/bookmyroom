@@ -5,7 +5,7 @@
 // List view: color indicators per room status
 // ─────────────────────────────────────────────────────────────────────────────
 
-frappe.listview_settings["Room"] = {
+frappe.listview_settings["Rooms"] = {
 	get_indicator: function (doc) {
 		const map = {
 			Available: "green",
@@ -22,7 +22,7 @@ frappe.listview_settings["Room"] = {
 // Form view: booking calendar section
 // ─────────────────────────────────────────────────────────────────────────────
 
-frappe.ui.form.on("Room", {
+frappe.ui.form.on("Rooms", {
 	refresh(frm) {
 		if (!frm.is_new()) {
 			frm.add_custom_button(__("View Reservations"), () => {
@@ -46,7 +46,7 @@ function _render_booking_calendar(frm) {
 
 	// Use a dedicated Python method to avoid client-side filter complexity
 	frappe.call({
-		method: "bookmyroom.book_my_room.doctype.room.room.get_room_reservations",
+		method: "bookmyroom.book_my_room.doctype.rooms.rooms.get_room_reservations",
 		args: {
 			room: frm.doc.name,
 			from_date: today,
