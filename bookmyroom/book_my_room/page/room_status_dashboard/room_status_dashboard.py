@@ -185,11 +185,18 @@ def get_dashboard_kpis(hotel=None, from_date=None, to_date=None):
 		"check_in": ["between", [t + " 00:00:00", t + " 23:59:59"]],
 		"status": ["in", ["Booked", "Checked In"]],
 	}) if is_current_month else None
-	checkouts_today = frappe.db.count("Room Reservation", {
-		**base,
-		"check_out": ["between", [t + " 00:00:00", t + " 23:59:59"]],
-		"status": ["in", ["Checked In", "Checked Out"]],
-	}) if is_current_month else None
+	checkouts_today = len(set(
+		[r.name for r in frappe.get_all("Room Reservation", filters={
+			**base,
+			"check_out": ["between", [t + " 00:00:00", t + " 23:59:59"]],
+			"status": ["in", ["Checked In", "Checked Out"]],
+		}, fields=["name"])] +
+		[r.name for r in frappe.get_all("Room Reservation", filters={
+			**base,
+			"check_in": ["between", [t + " 00:00:00", t + " 23:59:59"]],
+			"status": "Checked Out",
+		}, fields=["name"])]
+	)) if is_current_month else None
 
 	# Real-time room state (always current, not period-scoped)
 	occupied = frappe.db.count("Room Reservation", {**base, "status": "Checked In"})
@@ -322,6 +329,17 @@ def get_today_arrivals_departures(hotel=None):
 				 "status": ["in", ["Checked In", "Checked Out"]]},
 		fields=["name", "customer", "status", "check_in", "check_out"],
 	)
+	# Also include early checkouts: checked in today and already checked out
+	early_checkouts = frappe.get_all(
+		"Room Reservation",
+		filters={**base, "check_in": ["between", [t + " 00:00:00", t + " 23:59:59"]],
+				 "status": "Checked Out"},
+		fields=["name", "customer", "status", "check_in", "check_out"],
+	)
+	seen_names = {r.name for r in departures_res}
+	for r in early_checkouts:
+		if r.name not in seen_names:
+			departures_res.append(r)
 
 	def _enrich(res_list):
 		if not res_list:
@@ -359,11 +377,18 @@ def nc_checkins_today(**kwargs):
 @frappe.whitelist()
 def nc_checkouts_today(**kwargs):
 	t = today()
-	return frappe.db.count("Room Reservation", {
-		"docstatus": 1,
-		"check_out": ["between", [t + " 00:00:00", t + " 23:59:59"]],
-		"status": ["in", ["Checked In", "Checked Out"]],
-	}) or 0
+	return len(set(
+		[r.name for r in frappe.get_all("Room Reservation", filters={
+			"docstatus": 1,
+			"check_out": ["between", [t + " 00:00:00", t + " 23:59:59"]],
+			"status": ["in", ["Checked In", "Checked Out"]],
+		}, fields=["name"])] +
+		[r.name for r in frappe.get_all("Room Reservation", filters={
+			"docstatus": 1,
+			"check_in": ["between", [t + " 00:00:00", t + " 23:59:59"]],
+			"status": "Checked Out",
+		}, fields=["name"])]
+	)) or 0
 
 
 @frappe.whitelist()
@@ -499,7 +524,18 @@ def quick_checkout(reservation):
 	res = frappe.get_doc("Room Reservation", reservation)
 	if res.status != "Checked In":
 		return {"error": "Cannot check out: status is {}".format(res.status)}
-	frappe.db.set_value("Room Reservation", reservation, "status", "Checked Out")
+
+	today_date = getdate(today())
+	scheduled_co = getdate(str(res.check_out).split(" ")[0])
+	is_early = today_date < scheduled_co
+
+	updates = {"status": "Checked Out"}
+	if is_early:
+		updates["early_checkout"] = 1
+		updates["actual_checkout_date"] = today_date
+
+	frappe.db.set_value("Room Reservation", reservation, updates)
+
 	items = frappe.get_all("Room Reservation Item",
 		filters={"parent": reservation}, fields=["room"])
 	for item in items:
@@ -508,5 +544,22 @@ def quick_checkout(reservation):
 				"status": "Vacant",
 				"housekeeping_status": "Dirty",
 			})
+
+	if is_early:
+		frappe.get_doc({
+			"doctype": "Comment",
+			"comment_type": "Info",
+			"reference_doctype": "Room Reservation",
+			"reference_name": reservation,
+			"content": (
+				"<b>Early Check-out</b><br>"
+				"Original check-out date: <b>{}</b><br>"
+				"Actual check-out date: <b>{}</b>"
+			).format(
+				frappe.utils.formatdate(scheduled_co),
+				frappe.utils.formatdate(today_date),
+			),
+		}).insert(ignore_permissions=True)
+
 	frappe.db.commit()
 	return {"ok": True}

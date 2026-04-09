@@ -43,6 +43,8 @@
   "balance_due",
   "additional_section",
   "notes",
+  "early_checkout",
+  "actual_checkout_date",
   "col_break_5",
   "cancellation_reason",
   "cancellation_date",
@@ -285,6 +287,22 @@
    "fieldname": "notes",
    "fieldtype": "Small Text",
    "label": "Internal Notes"
+  },
+  {
+   "depends_on": "eval:doc.status === 'Checked Out'",
+   "fieldname": "early_checkout",
+   "fieldtype": "Check",
+   "label": "Early Check-out",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.early_checkout",
+   "fieldname": "actual_checkout_date",
+   "fieldtype": "Date",
+   "label": "Actual Check-out Date",
+   "no_copy": 1,
+   "read_only": 1
   },
   {
    "fieldname": "col_break_5",

@@ -331,6 +331,7 @@ function _render_quick_actions($root, hotel) {
 		}
 		frappe.new_doc("Room Reservation");
 	});
+
 }
 
 // ── KPI Cards ──────────────────────────────────────────────────────────────────
@@ -816,7 +817,7 @@ function _render_arrivals_departures($root, data) {
 				let actionBtn = "";
 				if (isArrival && r.status === "Booked") {
 					actionBtn = `<button class="bmr-ad-pill bmr-ad-action-btn bmr-ad-checkin" data-res="${r.name}">Check-in</button>`;
-				} else if (!isArrival && r.status === "Checked In") {
+				} else if (r.status === "Checked In") {
 					actionBtn = `<button class="bmr-ad-pill bmr-ad-action-btn bmr-ad-checkout" data-res="${r.name}">Checkout</button>`;
 				}
 				return `<div class="bmr-ad-row" data-res="${r.name}">

@@ -50,6 +50,8 @@ class RoomReservation(Document):
 		"""Block backdated bookings when enabled in Booking Settings."""
 		if not self.check_in:
 			return
+		if self.flags.get("from_ota"):
+			return  # OTA bookings bypass the backdated-booking check
 		block = frappe.db.get_single_value("Booking Settings", "block_backdated_booking")
 		if block and getdate(self.check_in) < getdate(nowdate()):
 			frappe.throw(
@@ -310,7 +312,15 @@ class RoomReservation(Document):
 		if self.status != "Checked In":
 			frappe.throw(_("Only reservations with status 'Checked In' can be checked out."))
 
+		today_date = getdate(nowdate())
+		scheduled_co = getdate(str(self.check_out).split(" ")[0])
+		is_early = today_date < scheduled_co
+
 		self.db_set("status", "Checked Out")
+		if is_early:
+			self.db_set("early_checkout", 1)
+			self.db_set("actual_checkout_date", today_date)
+
 		self._update_room_status("Vacant")
 
 		hk_tasks = []
@@ -319,6 +329,22 @@ class RoomReservation(Document):
 				frappe.db.set_value("Rooms", row.room, "housekeeping_status", "Dirty")
 				task_name = self._create_housekeeping_log(row.room)
 				hk_tasks.append(task_name)
+
+		if is_early:
+			frappe.get_doc({
+				"doctype": "Comment",
+				"comment_type": "Info",
+				"reference_doctype": "Room Reservation",
+				"reference_name": self.name,
+				"content": (
+					"<b>Early Check-out</b><br>"
+					"Original check-out date: <b>{}</b><br>"
+					"Actual check-out date: <b>{}</b>"
+				).format(
+					frappe.utils.formatdate(scheduled_co),
+					frappe.utils.formatdate(today_date),
+				),
+			}).insert(ignore_permissions=True)
 
 		frappe.msgprint(
 			_("Guest checked out. {0} housekeeping task(s) created.").format(len(hk_tasks)),
