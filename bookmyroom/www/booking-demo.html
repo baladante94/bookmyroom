@@ -1,0 +1,730 @@
+{% extends "templates/web.html" %}
+
+{% block title %}Booking.com | Official site | The best hotels & accommodations{% endblock %}
+
+{% block navbar %}{% endblock %}
+
+{% block head_include %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="https://t-cf.bstatic.com/design-assets/assets/v3.111.0/favicon/favicon-32x32.png" sizes="32x32">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;background:#f2f2f2;color:#333;font-size:14px}
+
+/* ── TOP NAV ── */
+#bk-topbar{background:#003580;padding:0}
+#bk-topbar .inner{max-width:1140px;margin:0 auto;padding:0 16px;display:flex;align-items:center;height:56px;gap:0}
+.bk-logo{font-size:26px;font-weight:700;color:#fff;letter-spacing:-1px;margin-right:20px;text-decoration:none;display:flex;align-items:center}
+.bk-logo .dot{color:#febb02;font-size:32px;line-height:0;vertical-align:middle;margin-left:1px}
+.bk-tabs{display:flex;gap:2px;flex:1}
+.bk-tab{display:flex;align-items:center;gap:6px;padding:0 14px;height:56px;color:rgba(255,255,255,.85);font-size:13px;font-weight:500;text-decoration:none;border-radius:0;transition:background .15s;cursor:pointer;border:none;background:none;white-space:nowrap}
+.bk-tab:hover,.bk-tab.active{color:#fff;background:rgba(255,255,255,.15)}
+.bk-tab svg{width:18px;height:18px;fill:currentColor;flex-shrink:0}
+.bk-topbar-right{display:flex;align-items:center;gap:8px;margin-left:auto}
+.bk-btn-outline{border:1px solid rgba(255,255,255,.6);background:transparent;color:#fff;padding:6px 14px;border-radius:3px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .15s}
+.bk-btn-outline:hover{background:rgba(255,255,255,.15)}
+.bk-btn-white{border:none;background:#fff;color:#003580;padding:6px 14px;border-radius:3px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+.bk-btn-white:hover{background:#e8eef4}
+
+/* ── HERO ── */
+#bk-hero{background:linear-gradient(180deg,#003580 0%,#003580 60%,#0071c2 100%);padding:30px 16px 50px}
+#bk-hero .inner{max-width:1140px;margin:0 auto}
+#bk-hero h1{color:#fff;font-size:32px;font-weight:700;margin-bottom:8px}
+#bk-hero .sub{color:rgba(255,255,255,.9);font-size:18px;margin-bottom:20px}
+
+/* Search type tabs */
+.bk-search-tabs{display:flex;gap:2px;margin-bottom:0;flex-wrap:wrap}
+.bk-search-tab{display:flex;align-items:center;gap:7px;padding:10px 16px;border-radius:4px 4px 0 0;font-size:14px;font-weight:500;color:rgba(255,255,255,.8);cursor:pointer;border:none;background:transparent;transition:background .15s}
+.bk-search-tab:hover{background:rgba(255,255,255,.15);color:#fff}
+.bk-search-tab.active{background:#fff;color:#0071c2;font-weight:600}
+.bk-search-tab svg{width:20px;height:20px;flex-shrink:0}
+
+/* Search form */
+#bk-search-form{background:#febb02;padding:4px;border-radius:0 4px 4px 4px;display:flex;gap:4px;align-items:stretch;flex-wrap:wrap}
+.bk-sf-field{background:#fff;border-radius:3px;display:flex;align-items:center;gap:8px;padding:0 12px;height:56px;flex:1 1 180px;cursor:text;border:2px solid transparent;transition:border-color .15s;position:relative}
+.bk-sf-field:focus-within{border-color:#0071c2;z-index:1}
+.bk-sf-field svg{width:20px;height:20px;fill:#595959;flex-shrink:0}
+.bk-sf-field .field-inner{flex:1;display:flex;flex-direction:column;justify-content:center;overflow:hidden}
+.bk-sf-field label{font-size:10px;color:#595959;font-weight:600;display:block;white-space:nowrap}
+.bk-sf-field input,.bk-sf-field select{border:none;outline:none;font-size:15px;font-weight:500;color:#333;background:transparent;width:100%;padding:0}
+.bk-sf-field input::placeholder{color:#ccc;font-weight:400}
+.bk-sf-field .date-display{font-size:15px;font-weight:500;color:#333}
+.bk-sf-field.occupancy{cursor:pointer;user-select:none;flex:0 1 220px}
+.bk-sf-field.occupancy .occ-text{font-size:15px;font-weight:500;color:#333;white-space:nowrap}
+#bk-search-btn{background:#0071c2;color:#fff;border:none;border-radius:3px;padding:0 24px;height:56px;font-size:16px;font-weight:700;cursor:pointer;white-space:nowrap;flex:0 0 auto;transition:background .15s}
+#bk-search-btn:hover{background:#005999}
+
+/* Date range display */
+.bk-sf-field.date-range{flex:0 1 280px;gap:0;padding:0}
+.date-part{flex:1;display:flex;align-items:center;gap:8px;padding:0 12px;height:100%}
+.date-part:first-child{border-right:1px solid #e0e0e0}
+.date-part svg{width:20px;height:20px;fill:#595959;flex-shrink:0}
+.date-part input{border:none;outline:none;font-size:14px;font-weight:500;color:#333;background:transparent;width:100%;min-width:0}
+
+/* Occupancy dropdown */
+#occ-dropdown{display:none;position:absolute;top:calc(100% + 4px);left:0;background:#fff;border-radius:4px;box-shadow:0 2px 16px rgba(0,0,0,.2);z-index:100;padding:16px;min-width:260px}
+#occ-dropdown.open{display:block}
+.occ-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f0f0f0}
+.occ-row:last-child{border:none}
+.occ-label .occ-title{font-size:14px;font-weight:600}
+.occ-label .occ-sub{font-size:12px;color:#888}
+.occ-counter{display:flex;align-items:center;gap:12px}
+.occ-btn{width:32px;height:32px;border-radius:50%;border:1px solid #0071c2;background:#fff;color:#0071c2;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:600;transition:background .15s}
+.occ-btn:hover{background:#e8f4fd}
+.occ-btn:disabled{border-color:#ddd;color:#ddd;cursor:not-allowed}
+.occ-val{font-size:16px;font-weight:600;min-width:20px;text-align:center}
+#occ-done-btn{width:100%;margin-top:12px;background:#0071c2;color:#fff;border:none;border-radius:3px;padding:10px;font-size:14px;font-weight:600;cursor:pointer}
+
+/* ── MAIN CONTENT ── */
+#bk-main{max-width:1140px;margin:0 auto;padding:24px 16px}
+
+/* Spinner */
+#bk-spinner{display:none;text-align:center;padding:48px}
+.bk-spin{width:44px;height:44px;border:4px solid #e0e0e0;border-top-color:#0071c2;border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Results layout */
+#bk-results{display:none}
+.results-header{margin-bottom:16px}
+.results-header h2{font-size:22px;font-weight:700;color:#333}
+.results-header .results-meta{font-size:14px;color:#555;margin-top:4px}
+
+/* Property card */
+.prop-card{background:#fff;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:16px;display:flex;overflow:hidden;transition:box-shadow .2s;border:1px solid #e0e0e0}
+.prop-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.14)}
+
+/* Card image */
+.prop-img{width:220px;min-height:200px;flex-shrink:0;position:relative;overflow:hidden}
+.prop-img-inner{width:100%;height:100%;object-fit:cover;display:block}
+.prop-img-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:36px;color:#fff}
+
+/* Card details */
+.prop-details{flex:1;padding:16px;display:flex;flex-direction:column;border-right:1px solid #f0f0f0}
+.prop-name{font-size:18px;font-weight:700;color:#0071c2;margin-bottom:4px;text-decoration:none;cursor:pointer}
+.prop-name:hover{text-decoration:underline}
+.prop-stars{color:#ffb700;font-size:13px;margin-bottom:4px;letter-spacing:1px}
+.prop-type-badge{display:inline-block;background:#e8f4fd;color:#0071c2;font-size:11px;font-weight:600;padding:2px 8px;border-radius:2px;margin-bottom:6px}
+.prop-location{font-size:13px;color:#0071c2;margin-bottom:8px;display:flex;align-items:center;gap:4px}
+.prop-location svg{width:14px;height:14px;fill:#0071c2;flex-shrink:0}
+.prop-desc{font-size:13px;color:#555;line-height:1.5;margin-bottom:10px;flex:1}
+.prop-badges{display:flex;gap:6px;flex-wrap:wrap}
+.prop-badge{font-size:12px;color:#008009;display:flex;align-items:center;gap:3px}
+.prop-badge svg{width:14px;height:14px;fill:#008009}
+
+/* Card price */
+.prop-price-col{width:220px;flex-shrink:0;padding:16px;display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between}
+.prop-score-wrap{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.prop-score-label{font-size:12px;color:#333;font-weight:600}
+.prop-score-badge{background:#003580;color:#fff;font-size:16px;font-weight:700;padding:6px 8px;border-radius:4px 4px 4px 0;min-width:36px;text-align:center}
+.prop-score-count{font-size:11px;color:#888}
+.prop-price-wrap{text-align:right}
+.prop-price-note{font-size:12px;color:#888}
+.prop-price-val{font-size:28px;font-weight:700;color:#333;line-height:1.1}
+.prop-price-curr{font-size:16px;font-weight:700}
+.prop-price-tax{font-size:11px;color:#888;margin-top:2px}
+.prop-genius{font-size:12px;color:#9c27b0;font-weight:600;display:flex;align-items:center;gap:3px;margin-bottom:4px}
+.btn-see-avail{background:#0071c2;color:#fff;border:none;border-radius:3px;padding:12px 16px;font-size:14px;font-weight:600;cursor:pointer;width:100%;transition:background .15s;margin-top:8px}
+.btn-see-avail:hover{background:#005999}
+
+/* ── BOOKING MODAL ── */
+#bk-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px}
+#bk-modal-overlay.open{display:flex}
+#bk-modal{background:#fff;border-radius:4px;width:100%;max-width:560px;margin:auto;position:relative}
+.modal-header{background:#003580;padding:20px 24px;border-radius:4px 4px 0 0;display:flex;justify-content:space-between;align-items:center}
+.modal-header h2{color:#fff;font-size:18px;font-weight:700}
+.modal-close{background:none;border:none;color:#fff;font-size:24px;cursor:pointer;line-height:1;padding:0}
+.modal-body{padding:24px}
+.booking-summary{background:#f0f7ff;border-radius:4px;padding:14px 16px;margin-bottom:20px;border-left:4px solid #0071c2}
+.booking-summary .bs-hotel{font-size:16px;font-weight:700;color:#003580;margin-bottom:4px}
+.booking-summary .bs-row{font-size:13px;color:#555;line-height:1.8}
+.booking-summary .bs-price{font-size:18px;font-weight:700;color:#333;margin-top:6px}
+
+.ota-select-label{font-size:13px;font-weight:600;color:#333;margin-bottom:8px}
+.ota-channels{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.ota-ch-btn{padding:7px 14px;border-radius:2px;font-size:13px;font-weight:600;border:1px solid #ddd;cursor:pointer;background:#fff;color:#333;transition:all .15s}
+.ota-ch-btn:hover{border-color:#0071c2;color:#0071c2}
+.ota-ch-btn.sel{background:#0071c2;color:#fff;border-color:#0071c2}
+
+.fm-row{margin-bottom:14px}
+.fm-row label{display:block;font-size:13px;font-weight:600;color:#333;margin-bottom:5px}
+.fm-row input,.fm-row textarea{width:100%;border:1px solid #ccc;border-radius:3px;padding:10px 12px;font-size:14px;outline:none;transition:border-color .15s;font-family:inherit}
+.fm-row input:focus,.fm-row textarea:focus{border-color:#0071c2;box-shadow:0 0 0 2px rgba(0,113,194,.15)}
+.fm-row .hint{font-size:11px;color:#888;margin-top:3px}
+.fm-row textarea{height:72px;resize:vertical}
+.modal-error{background:#fff0f0;border:1px solid #ffaaaa;border-radius:3px;padding:10px 14px;font-size:13px;color:#c00;margin-bottom:12px;display:none}
+#btn-complete-booking{width:100%;background:#0071c2;color:#fff;border:none;border-radius:3px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;transition:background .15s}
+#btn-complete-booking:hover{background:#005999}
+#btn-complete-booking:disabled{background:#aaa;cursor:not-allowed}
+.secure-note{text-align:center;font-size:11px;color:#888;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:4px}
+
+/* ── CONFIRMATION ── */
+#bk-confirmation{display:none}
+.conf-wrap{max-width:640px;margin:40px auto;background:#fff;border-radius:4px;border:1px solid #e0e0e0;overflow:hidden}
+.conf-header{background:#008009;padding:24px;text-align:center}
+.conf-header .conf-check{font-size:48px;color:#fff;margin-bottom:8px}
+.conf-header h2{color:#fff;font-size:22px;font-weight:700}
+.conf-header p{color:rgba(255,255,255,.9);font-size:14px;margin-top:4px}
+.conf-body{padding:24px}
+.conf-ref{text-align:center;margin-bottom:20px;padding:14px;background:#f0f7ff;border-radius:4px}
+.conf-ref .ref-label{font-size:12px;color:#888;margin-bottom:4px}
+.conf-ref .ref-val{font-size:22px;font-weight:700;color:#003580;font-family:monospace}
+.conf-table{width:100%;border-collapse:collapse;margin-bottom:20px}
+.conf-table td{padding:8px 0;font-size:14px;border-bottom:1px solid #f5f5f5;vertical-align:top}
+.conf-table td:first-child{color:#555;width:40%}
+.conf-table td:last-child{font-weight:600;color:#333;text-align:right}
+.conf-table tr.total td{font-size:16px;font-weight:700;color:#0071c2;border-bottom:none;padding-top:12px}
+.conf-erp-banner{background:#fff8e1;border:1px solid #ffc107;border-radius:4px;padding:12px 16px;font-size:13px;color:#6d4c00;margin-bottom:20px;display:flex;gap:8px;align-items:flex-start}
+.conf-erp-banner svg{width:18px;height:18px;fill:#ffc107;flex-shrink:0;margin-top:1px}
+.btn-new-search{width:100%;background:#0071c2;color:#fff;border:none;border-radius:3px;padding:13px;font-size:14px;font-weight:700;cursor:pointer}
+
+/* ── EMPTY STATE ── */
+.bk-empty{text-align:center;padding:56px 16px;color:#888}
+.bk-empty .empty-icon{font-size:48px;margin-bottom:16px}
+.bk-empty h3{font-size:18px;font-weight:600;color:#555;margin-bottom:6px}
+.bk-empty p{font-size:14px}
+
+/* ── RESPONSIVE ── */
+@media(max-width:720px){
+  .prop-card{flex-direction:column}
+  .prop-img{width:100%;height:180px}
+  .prop-price-col{width:100%;flex-direction:row;align-items:center;justify-content:space-between;border-top:1px solid #f0f0f0}
+  .bk-tab span{display:none}
+  .bk-tabs{gap:0}
+  .bk-tab{padding:0 10px}
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ── TOP NAVIGATION ── -->
+<div id="bk-topbar">
+  <div class="inner">
+    <a class="bk-logo" href="#">booking<span class="dot">.</span>com</a>
+    <div class="bk-tabs">
+      <a class="bk-tab active" href="#">
+        <svg viewBox="0 0 24 24"><path d="M7 13c1.66 0 3-1.34 3-3S8.66 7 7 7s-3 1.34-3 3 1.34 3 3 3zm12-6h-8v7H3V5H1v15h2v-3h18v3h2v-9c0-2.21-1.79-4-4-4z"/></svg>
+        <span>Stays</span>
+      </a>
+      <a class="bk-tab" href="#">
+        <svg viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>
+        <span>Flights</span>
+      </a>
+      <a class="bk-tab" href="#">
+        <svg viewBox="0 0 24 24"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>
+        <span>Car rentals</span>
+      </a>
+      <a class="bk-tab" href="#">
+        <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+        <span>Attractions</span>
+      </a>
+      <a class="bk-tab" href="#">
+        <svg viewBox="0 0 24 24"><path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9l1.96 2.5H17V9.5h2.5zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
+        <span>Airport taxis</span>
+      </a>
+    </div>
+    <div class="bk-topbar-right">
+      <button class="bk-btn-outline">List your property</button>
+      <button class="bk-btn-outline">Support</button>
+      <button class="bk-btn-outline">Sign in</button>
+      <button class="bk-btn-white">Register</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── HERO ── -->
+<div id="bk-hero">
+  <div class="inner">
+    <h1>Find your next stay</h1>
+    <p class="sub">Search low prices on hotels, homes and much more...</p>
+
+    <!-- Search type tabs -->
+    <div class="bk-search-tabs">
+      <button class="bk-search-tab active">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M7 13c1.66 0 3-1.34 3-3S8.66 7 7 7s-3 1.34-3 3 1.34 3 3 3zm12-6h-8v7H3V5H1v15h2v-3h18v3h2v-9c0-2.21-1.79-4-4-4z"/></svg>
+        Stays
+      </button>
+      <button class="bk-search-tab">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>
+        Flights
+      </button>
+      <button class="bk-search-tab">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>
+        Car rentals
+      </button>
+      <button class="bk-search-tab">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+        Attractions
+      </button>
+      <button class="bk-search-tab">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9l1.96 2.5H17V9.5h2.5zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
+        Airport taxis
+      </button>
+    </div>
+
+    <!-- Search form -->
+    <div id="bk-search-form">
+      <!-- Destination -->
+      <div class="bk-sf-field" style="flex:2 1 240px">
+        <svg viewBox="0 0 24 24"><path d="M7 13c1.66 0 3-1.34 3-3S8.66 7 7 7s-3 1.34-3 3 1.34 3 3 3zm12-6h-8v7H3V5H1v15h2v-3h18v3h2v-9c0-2.21-1.79-4-4-4z"/></svg>
+        <div class="field-inner">
+          <label>Where are you going?</label>
+          <select id="sel-hotel" style="font-size:15px;font-weight:500;color:#333">
+            <option value="">Loading...</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Dates -->
+      <div class="bk-sf-field date-range" style="flex:1 1 240px">
+        <div class="date-part">
+          <svg viewBox="0 0 24 24"><path d="M20 3h-1V1h-2v2H7V1H5v2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 18H4V8h16v13z"/></svg>
+          <div class="field-inner">
+            <label>Check-in</label>
+            <input type="date" id="inp-checkin">
+          </div>
+        </div>
+        <div class="date-part">
+          <svg viewBox="0 0 24 24"><path d="M20 3h-1V1h-2v2H7V1H5v2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 18H4V8h16v13z"/></svg>
+          <div class="field-inner">
+            <label>Check-out</label>
+            <input type="date" id="inp-checkout">
+          </div>
+        </div>
+      </div>
+
+      <!-- Occupancy -->
+      <div class="bk-sf-field occupancy" style="flex:1 1 200px;position:relative" onclick="toggleOcc()">
+        <svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+        <div class="field-inner">
+          <label>Guests</label>
+          <span class="occ-text" id="occ-display">2 adults · 0 children · 1 room</span>
+        </div>
+        <!-- Occupancy dropdown -->
+        <div id="occ-dropdown">
+          <div class="occ-row">
+            <div class="occ-label"><div class="occ-title">Adults</div></div>
+            <div class="occ-counter">
+              <button class="occ-btn" onclick="changeOcc(event,'adults',-1)" id="adults-minus">−</button>
+              <span class="occ-val" id="adults-val">2</span>
+              <button class="occ-btn" onclick="changeOcc(event,'adults',1)">+</button>
+            </div>
+          </div>
+          <div class="occ-row">
+            <div class="occ-label"><div class="occ-title">Children</div><div class="occ-sub">Ages 0–17</div></div>
+            <div class="occ-counter">
+              <button class="occ-btn" onclick="changeOcc(event,'children',-1)" id="children-minus">−</button>
+              <span class="occ-val" id="children-val">0</span>
+              <button class="occ-btn" onclick="changeOcc(event,'children',1)">+</button>
+            </div>
+          </div>
+          <div class="occ-row">
+            <div class="occ-label"><div class="occ-title">Rooms</div></div>
+            <div class="occ-counter">
+              <button class="occ-btn" onclick="changeOcc(event,'rooms',-1)" id="rooms-minus">−</button>
+              <span class="occ-val" id="rooms-val">1</span>
+              <button class="occ-btn" onclick="changeOcc(event,'rooms',1)">+</button>
+            </div>
+          </div>
+          <button id="occ-done-btn" onclick="closeOcc(event)">Done</button>
+        </div>
+      </div>
+
+      <button id="bk-search-btn" onclick="bkSearch()">Search</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MAIN CONTENT ── -->
+<div id="bk-main">
+
+  <!-- Spinner -->
+  <div id="bk-spinner">
+    <div class="bk-spin"></div>
+    <p style="margin-top:14px;color:#555;font-size:14px">Searching for available rooms...</p>
+  </div>
+
+  <!-- Results -->
+  <div id="bk-results">
+    <div class="results-header">
+      <h2 id="res-title"></h2>
+      <div class="results-meta" id="res-meta"></div>
+    </div>
+    <div id="res-list"></div>
+  </div>
+
+  <!-- Confirmation -->
+  <div id="bk-confirmation">
+    <div class="conf-wrap">
+      <div class="conf-header">
+        <div class="conf-check">✓</div>
+        <h2>Your booking is confirmed!</h2>
+        <p>A confirmation has been sent to your email address</p>
+      </div>
+      <div class="conf-body">
+        <div class="conf-ref">
+          <div class="ref-label">Booking confirmation number</div>
+          <div class="ref-val" id="conf-ref-val"></div>
+        </div>
+        <table class="conf-table" id="conf-table"></table>
+        <div class="conf-erp-banner">
+          <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+          <span>This booking has been automatically synced to the hotel's property management system.</span>
+        </div>
+        <button class="btn-new-search" onclick="bkReset()">Search for more properties</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── BOOKING MODAL ── -->
+<div id="bk-modal-overlay">
+  <div id="bk-modal">
+    <div class="modal-header">
+      <h2>Complete your booking</h2>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="booking-summary" id="modal-summary"></div>
+
+      <div class="ota-select-label">You are booking through:</div>
+      <div class="ota-channels" id="ota-channels">
+        <button class="ota-ch-btn sel" data-src="Booking.com" onclick="selOTA(this)">booking.com</button>
+        <button class="ota-ch-btn" data-src="Agoda" onclick="selOTA(this)">Agoda</button>
+        <button class="ota-ch-btn" data-src="Expedia" onclick="selOTA(this)">Expedia</button>
+        <button class="ota-ch-btn" data-src="MakeMyTrip" onclick="selOTA(this)">MakeMyTrip</button>
+        <button class="ota-ch-btn" data-src="Hotels.com" onclick="selOTA(this)">Hotels.com</button>
+      </div>
+
+      <div class="fm-row">
+        <label>First and last name *</label>
+        <input type="text" id="inp-name" placeholder="e.g. Ramesh Kumar">
+      </div>
+      <div class="fm-row">
+        <label>Email address *</label>
+        <input type="email" id="inp-email" placeholder="name@example.com">
+        <div class="hint">Confirmation will be sent to this address</div>
+      </div>
+      <div class="fm-row">
+        <label>Mobile number</label>
+        <input type="tel" id="inp-phone" placeholder="+91 98765 43210">
+      </div>
+      <div class="fm-row">
+        <label>Special requests <span style="font-weight:400;color:#888">(optional)</span></label>
+        <textarea id="inp-special" placeholder="e.g. I'd like a room on a high floor..."></textarea>
+      </div>
+
+      <div class="modal-error" id="modal-err"></div>
+
+      <button id="btn-complete-booking" onclick="completeBooking()">
+        Complete booking
+      </button>
+      <div class="secure-note">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="#888"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+        Your personal data is protected. SSL secured booking.
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block script %}
+<script>
+// ── State ──────────────────────────────────────────────────────
+var _room = null;
+var _search = {};
+var _otaSrc = "Booking.com";
+var _occ = { adults: 2, children: 0, rooms: 1 };
+
+// ── Init ───────────────────────────────────────────────────────
+document.addEventListener("DOMContentLoaded", function () {
+  setDefaultDates();
+  loadHotels();
+  document.addEventListener("click", function(e) {
+    var drop = document.getElementById("occ-dropdown");
+    if (drop.classList.contains("open") && !drop.closest(".occupancy").contains(e.target)) {
+      drop.classList.remove("open");
+    }
+  });
+});
+
+function setDefaultDates() {
+  var t = new Date();
+  var ci = new Date(t); ci.setDate(t.getDate() + 1);
+  var co = new Date(t); co.setDate(t.getDate() + 2);
+  document.getElementById("inp-checkin").value  = fmtDate(ci);
+  document.getElementById("inp-checkout").value = fmtDate(co);
+}
+
+function loadHotels() {
+  frappe.call({
+    method: "bookmyroom.book_my_room.api.ota_api.get_hotels",
+    callback: function(r) {
+      var sel = document.getElementById("sel-hotel");
+      var hotels = r.message || [];
+      sel.innerHTML = '<option value="">Where are you going?</option>';
+      hotels.forEach(function(h) {
+        var lbl = h.hotel_name;
+        if (h.city) lbl += ", " + h.city;
+        if (h.country) lbl += ", " + h.country;
+        var o = document.createElement("option");
+        o.value = h.name; o.textContent = lbl;
+        sel.appendChild(o);
+      });
+    }
+  });
+}
+
+// ── Occupancy ──────────────────────────────────────────────────
+function toggleOcc() {
+  document.getElementById("occ-dropdown").classList.toggle("open");
+}
+function closeOcc(e) {
+  e.stopPropagation();
+  document.getElementById("occ-dropdown").classList.remove("open");
+}
+function changeOcc(e, field, delta) {
+  e.stopPropagation();
+  var min = field === "adults" || field === "rooms" ? 1 : 0;
+  _occ[field] = Math.max(min, _occ[field] + delta);
+  document.getElementById(field + "-val").textContent = _occ[field];
+  document.getElementById("adults-minus").disabled = _occ.adults <= 1;
+  document.getElementById("children-minus").disabled = _occ.children <= 0;
+  document.getElementById("rooms-minus").disabled = _occ.rooms <= 1;
+  document.getElementById("occ-display").textContent =
+    _occ.adults + " adult" + (_occ.adults > 1 ? "s" : "") +
+    " · " + _occ.children + " child" + (_occ.children !== 1 ? "ren" : "") +
+    " · " + _occ.rooms + " room" + (_occ.rooms > 1 ? "s" : "");
+}
+
+// ── Search ─────────────────────────────────────────────────────
+function bkSearch() {
+  var hotel    = document.getElementById("sel-hotel").value;
+  var check_in = document.getElementById("inp-checkin").value;
+  var check_out= document.getElementById("inp-checkout").value;
+  if (!hotel)    { alert("Please select a destination."); return; }
+  if (!check_in) { alert("Please select a check-in date."); return; }
+  if (!check_out){ alert("Please select a check-out date."); return; }
+  if (check_in >= check_out) { alert("Check-out must be after check-in."); return; }
+
+  _search = { hotel, check_in, check_out, adults: _occ.adults, children: _occ.children };
+  show("bk-spinner"); hide("bk-results"); hide("bk-confirmation");
+
+  frappe.call({
+    method: "bookmyroom.book_my_room.api.ota_api.search_rooms_ota",
+    args: { hotel, check_in, check_out, num_adults: _occ.adults, num_children: _occ.children },
+    callback: function(r) {
+      hide("bk-spinner");
+      renderResults(r.message || []);
+    },
+    error: function() {
+      hide("bk-spinner");
+      alert("Search failed. Please try again.");
+    }
+  });
+}
+
+// ── Render results ─────────────────────────────────────────────
+function renderResults(rooms) {
+  show("bk-results");
+  var nights = nightsBetween(_search.check_in, _search.check_out);
+  var hotelText = document.getElementById("sel-hotel").selectedOptions[0].text;
+
+  document.getElementById("res-title").textContent =
+    hotelText + ": " + rooms.length + " room" + (rooms.length !== 1 ? "s" : "") + " found";
+  document.getElementById("res-meta").textContent =
+    fmtDisp(_search.check_in) + " – " + fmtDisp(_search.check_out) +
+    " · " + nights + " night" + (nights > 1 ? "s" : "") +
+    " · " + _occ.adults + " adult" + (_occ.adults > 1 ? "s" : "");
+
+  var list = document.getElementById("res-list");
+  if (!rooms.length) {
+    list.innerHTML = '<div class="bk-empty"><div class="empty-icon">🏨</div><h3>No rooms available for your search</h3><p>Try different dates or adjust the number of guests.</p></div>';
+    return;
+  }
+
+  rooms.sort(function(a, b) { return a.rate - b.rate; });
+  var GRADIENTS = [
+    ["#667eea","#764ba2"], ["#f093fb","#f5576c"], ["#4facfe","#00f2fe"],
+    ["#43e97b","#38f9d7"], ["#fa709a","#fee140"], ["#a18cd1","#fbc2eb"],
+    ["#ffecd2","#fcb69f"], ["#84fab0","#8fd3f4"]
+  ];
+
+  list.innerHTML = rooms.map(function(room, i) {
+    var g = GRADIENTS[i % GRADIENTS.length];
+    var total = (room.rate * nights);
+    var score = (7.5 + (i % 3) * 0.5).toFixed(1);
+    var scoreLabel = score >= 9 ? "Superb" : score >= 8 ? "Excellent" : "Very good";
+    var reviewCount = 100 + (i * 37) % 900;
+    var bedIcon = (room.bed_type || "").toLowerCase().includes("king") ? "👑" :
+                  (room.bed_type || "").toLowerCase().includes("twin") ? "🛏️🛏️" : "🛏️";
+
+    return [
+      '<div class="prop-card">',
+      '  <div class="prop-img" style="background:linear-gradient(135deg,' + g[0] + ',' + g[1] + ')">',
+      '    <div class="prop-img-placeholder">' + bedIcon + '</div>',
+      '  </div>',
+      '  <div class="prop-details">',
+      '    <span class="prop-name" onclick="openModal(' + JSON.stringify(room).replace(/"/g,"&quot;") + ')">' + room.room_type + ' — Room ' + room.room + '</span>',
+      '    <div class="prop-stars">' + '★'.repeat(3) + '</div>',
+      '    <span class="prop-type-badge">' + (room.bed_type || "Standard") + ' room</span>',
+      '    <div class="prop-location"><svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>Floor ' + (room.floor || 1) + (room.view_type ? " · " + room.view_type + " view" : "") + '</div>',
+      '    <p class="prop-desc">' + (room.description ? room.description.substring(0, 140) : "Comfortable room with modern amenities. Perfect for both business and leisure travelers.") + '</p>',
+      '    <div class="prop-badges">',
+      '      <span class="prop-badge"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>Free cancellation</span>',
+      '      <span class="prop-badge"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>Free Wi-Fi</span>',
+      '      <span class="prop-badge"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>No prepayment needed</span>',
+      '    </div>',
+      '  </div>',
+      '  <div class="prop-price-col">',
+      '    <div class="prop-score-wrap">',
+      '      <div style="display:flex;align-items:center;gap:8px">',
+      '        <div><div class="prop-score-label">' + scoreLabel + '</div><div class="prop-score-count">' + reviewCount + ' reviews</div></div>',
+      '        <div class="prop-score-badge">' + score + '</div>',
+      '      </div>',
+      '    </div>',
+      '    <div class="prop-price-wrap">',
+      '      <div class="prop-genius">🏷 Genius discount applied</div>',
+      '      <div class="prop-price-note">' + nights + ' night' + (nights > 1 ? 's' : '') + ', ' + _occ.adults + ' adult' + (_occ.adults > 1 ? 's' : '') + '</div>',
+      '      <div class="prop-price-val"><span class="prop-price-curr">₹</span>' + fmtNum(total) + '</div>',
+      '      <div class="prop-price-tax">Includes taxes and fees</div>',
+      '      <button class="btn-see-avail" onclick="openModal(' + JSON.stringify(room).replace(/"/g,"&quot;") + ')">See availability</button>',
+      '    </div>',
+      '  </div>',
+      '</div>'
+    ].join("\n");
+  }).join("\n");
+}
+
+// ── Modal ──────────────────────────────────────────────────────
+function openModal(room) {
+  _room = room;
+  var nights = nightsBetween(_search.check_in, _search.check_out);
+  var total = room.rate * nights;
+  var hotelText = document.getElementById("sel-hotel").selectedOptions[0].text.split(",")[0];
+  document.getElementById("modal-summary").innerHTML =
+    '<div class="bs-hotel">' + hotelText + '</div>' +
+    '<div class="bs-row">📅 ' + fmtDisp(_search.check_in) + ' → ' + fmtDisp(_search.check_out) + ' (' + nights + ' night' + (nights > 1 ? 's' : '') + ')</div>' +
+    '<div class="bs-row">🛏 ' + room.room_type + ' &nbsp;·&nbsp; Room ' + room.room + '</div>' +
+    '<div class="bs-row">👤 ' + _occ.adults + ' adult' + (_occ.adults > 1 ? 's' : '') + (_occ.children ? ', ' + _occ.children + ' child' : '') + '</div>' +
+    '<div class="bs-price">₹' + fmtNum(total) + ' <span style="font-size:13px;font-weight:400;color:#888">total (incl. taxes)</span></div>';
+  document.getElementById("modal-err").style.display = "none";
+  document.getElementById("bk-modal-overlay").classList.add("open");
+  document.getElementById("bk-modal-overlay").style.display = "flex";
+}
+function closeModal() {
+  document.getElementById("bk-modal-overlay").classList.remove("open");
+  document.getElementById("bk-modal-overlay").style.display = "none";
+}
+
+// ── OTA source ─────────────────────────────────────────────────
+function selOTA(btn) {
+  document.querySelectorAll(".ota-ch-btn").forEach(function(b){ b.classList.remove("sel"); });
+  btn.classList.add("sel");
+  _otaSrc = btn.dataset.src;
+}
+
+// ── Complete booking ───────────────────────────────────────────
+function completeBooking() {
+  var name  = document.getElementById("inp-name").value.trim();
+  var email = document.getElementById("inp-email").value.trim();
+  var phone = document.getElementById("inp-phone").value.trim();
+  var spec  = document.getElementById("inp-special").value.trim();
+  var errEl = document.getElementById("modal-err");
+
+  if (!name)  { showErr("Please enter your first and last name."); return; }
+  if (!email) { showErr("Please enter your email address."); return; }
+  if (!/\S+@\S+\.\S+/.test(email)) { showErr("Please enter a valid email address."); return; }
+
+  var btn = document.getElementById("btn-complete-booking");
+  btn.disabled = true; btn.textContent = "Processing...";
+  errEl.style.display = "none";
+
+  frappe.call({
+    method: "bookmyroom.book_my_room.api.ota_api.create_ota_booking",
+    args: {
+      hotel:            _search.hotel,
+      check_in:         _search.check_in,
+      check_out:        _search.check_out,
+      room:             _room.room,
+      room_type:        _room.room_type,
+      rate:             _room.rate,
+      guest_name:       name,
+      guest_email:      email,
+      guest_phone:      phone,
+      num_adults:       _occ.adults,
+      num_children:     _occ.children,
+      source:           _otaSrc,
+      special_requests: spec
+    },
+    callback: function(r) {
+      btn.disabled = false; btn.textContent = "Complete booking";
+      if (!r.message) { showErr("Booking failed. Please try again."); return; }
+      var res = r.message;
+      closeModal();
+      showConfirmation(res, name, email);
+    },
+    error: function(err) {
+      btn.disabled = false; btn.textContent = "Complete booking";
+      var msg = "Booking failed. Please try again.";
+      try { msg = JSON.parse(err.responseText).exception || msg; } catch(e) {}
+      showErr(msg);
+    }
+  });
+}
+
+function showConfirmation(res, name, email) {
+  hide("bk-results");
+  var nights = nightsBetween(_search.check_in, _search.check_out);
+  var hotelText = document.getElementById("sel-hotel").selectedOptions[0].text.split(",")[0];
+
+  document.getElementById("conf-ref-val").textContent = res.reservation_id;
+  document.getElementById("conf-table").innerHTML = [
+    tr("Property",         hotelText),
+    tr("Room",             _room.room_type + " · Room " + _room.room),
+    tr("Check-in",         fmtDisp(_search.check_in)),
+    tr("Check-out",        fmtDisp(_search.check_out)),
+    tr("Duration",         nights + " night" + (nights > 1 ? "s" : "")),
+    tr("Guests",           _occ.adults + " adult" + (_occ.adults > 1 ? "s" : "") + (_occ.children ? ", " + _occ.children + " child" : "")),
+    tr("Guest name",       name),
+    tr("Booked via",       _otaSrc),
+    trTotal("Total price", "₹" + fmtNum(res.grand_total))
+  ].join("");
+
+  show("bk-confirmation");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function bkReset() {
+  hide("bk-confirmation"); hide("bk-results"); hide("bk-spinner");
+  _room = null;
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function showErr(msg) {
+  var el = document.getElementById("modal-err");
+  el.textContent = msg; el.style.display = "block";
+}
+
+// ── Helpers ────────────────────────────────────────────────────
+function show(id) { document.getElementById(id).style.display = "block"; }
+function hide(id) { document.getElementById(id).style.display = "none"; }
+function fmtDate(d) { return d.toISOString().split("T")[0]; }
+function nightsBetween(a,b) { return Math.max(Math.round((new Date(b)-new Date(a))/86400000),1); }
+function fmtNum(n) { return parseFloat(n).toLocaleString("en-IN",{maximumFractionDigits:0}); }
+function fmtDisp(d) {
+  if (!d) return "";
+  var p = d.split("-");
+  var m = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return parseInt(p[2]) + " " + m[parseInt(p[1])-1] + " " + p[0];
+}
+function tr(label, val) {
+  return '<tr><td>' + label + '</td><td>' + val + '</td></tr>';
+}
+function trTotal(label, val) {
+  return '<tr class="total"><td>' + label + '</td><td>' + val + '</td></tr>';
+}
+</script>
+{% endblock %}

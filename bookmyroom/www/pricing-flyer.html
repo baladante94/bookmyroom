@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>BookMyRoom + ERPNext - Pricing</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:      #0E1E35;
+      --navy-mid:  #152845;
+      --gold:      #C9A84C;
+      --gold-lt:   #F0D98A;
+      --gold-pale: #FBF5E6;
+      --cream:     #F7F3EC;
+      --white:     #FFFFFF;
+      --ink:       #1A1A2E;
+      --muted:     #6B7280;
+      --border:    #E5DDD0;
+      --green:     #1A6B45;
+      --green-lt:  #D4EDDE;
+      --teal:      #0F7B6C;
+      --teal-lt:   #D0EEEA;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #D6D0C8;
+      color: var(--ink);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .page {
+      max-width: 900px;
+      margin: 32px auto;
+      background: var(--white);
+      overflow: hidden;
+      box-shadow: 0 16px 64px rgba(14,30,53,.2);
+    }
+
+    /* ─── EXPORT BUTTON ─── */
+    .export-btn {
+      position: fixed; top: 20px; right: 20px; z-index: 9999;
+      background: var(--gold); color: var(--navy);
+      border: none; padding: 11px 20px; border-radius: 6px;
+      font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 700;
+      cursor: pointer; box-shadow: 0 4px 12px rgba(201,168,76,.4);
+      display: flex; align-items: center; gap: 7px; transition: all .18s;
+    }
+    .export-btn:hover { background: var(--gold-lt); transform: translateY(-1px); }
+    .export-btn.loading { opacity: .6; pointer-events: none; }
+    @media print { .export-btn { display: none !important; } }
+
+    /* ─── HERO ─── */
+    .hero { background: var(--navy); color: white; }
+
+    .hero-top-bar {
+      background: var(--gold);
+      padding: 10px 48px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .hero-brand {
+      font-family: 'Playfair Display', serif;
+      font-size: 15px; font-weight: 700; color: var(--navy);
+    }
+    .hero-region {
+      font-size: 11px; font-weight: 600; color: var(--navy);
+      opacity: .7; letter-spacing: .08em; text-transform: uppercase;
+    }
+
+    .hero-inner {
+      padding: 48px 48px 44px;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center;
+    }
+
+    .hero-badge {
+      display: inline-block;
+      border: 1px solid rgba(201,168,76,.35);
+      background: rgba(201,168,76,.08);
+      padding: 5px 13px; border-radius: 4px;
+      font-size: 10px; font-weight: 700;
+      letter-spacing: .12em; text-transform: uppercase;
+      color: var(--gold-lt); margin-bottom: 18px;
+    }
+    .hero-badge::before { display: none; }
+    .hero h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 40px; font-weight: 800;
+      line-height: 1.12; margin-bottom: 14px; color: white;
+    }
+    .hero h1 em { color: var(--gold); font-style: normal; }
+    .hero-sub {
+      font-size: 13.5px; line-height: 1.8;
+      color: rgba(255,255,255,.6); margin-bottom: 24px;
+    }
+    .hero-pills { display: flex; flex-direction: column; gap: 7px; }
+    .pill {
+      display: flex; align-items: center; gap: 9px;
+      font-size: 12.5px; font-weight: 500; color: rgba(255,255,255,.72);
+    }
+    .pill-dot {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: var(--gold); flex-shrink: 0; box-shadow: none;
+    }
+
+    /* FREE CARD */
+    .free-card {
+      background: linear-gradient(150deg, #C9A84C 0%, #E5C46A 50%, #C9A84C 100%);
+      border-radius: 10px; padding: 26px 28px;
+      box-shadow: 0 10px 32px rgba(201,168,76,.3), inset 0 1px 0 rgba(255,255,255,.25);
+      position: relative; overflow: hidden;
+    }
+    .free-card::before { display: none; }
+    .free-card-eyebrow {
+      font-size: 9px; font-weight: 800; letter-spacing: .16em;
+      text-transform: uppercase; color: var(--navy); opacity: .6; margin-bottom: 6px;
+    }
+    .free-card-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 20px; font-weight: 700; color: var(--navy); margin-bottom: 3px;
+    }
+    .free-card-subtitle { font-size: 12px; color: rgba(14,30,53,.6); margin-bottom: 18px; }
+    .free-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
+    .free-chip {
+      background: rgba(14,30,53,.1); border: 1px solid rgba(14,30,53,.14);
+      border-radius: 4px; padding: 4px 9px;
+      font-size: 11px; color: var(--navy); font-weight: 600;
+    }
+    .free-bottom {
+      border-top: 1px solid rgba(14,30,53,.14); padding-top: 14px;
+    }
+    .free-price-was { font-size: 11px; color: rgba(14,30,53,.45); text-decoration: line-through; margin-bottom: 2px; }
+    .free-price-now {
+      font-family: 'Playfair Display', serif;
+      font-size: 42px; font-weight: 800; color: var(--navy); line-height: 1;
+    }
+    .free-price-note {
+      font-size: 10px; font-weight: 700; letter-spacing: .1em;
+      text-transform: uppercase; color: var(--navy); opacity: .55; margin-top: 3px;
+    }
+
+    /* ─── STAT BAR ─── */
+    .stat-bar {
+      background: var(--navy-mid);
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      border-top: 1px solid rgba(201,168,76,.18);
+    }
+    .stat-cell {
+      padding: 20px 12px; text-align: center;
+      border-right: 1px solid rgba(255,255,255,.05);
+      position: relative; overflow: visible;
+    }
+    .stat-cell:last-child { border-right: none; }
+    .stat-cell::after { display: none; }
+    .stat-num {
+      font-family: 'Playfair Display', serif;
+      font-size: 28px; font-weight: 700; color: var(--gold);
+      line-height: 1.2; white-space: nowrap;
+    }
+    .stat-lbl { font-size: 10.5px; color: rgba(255,255,255,.42); margin-top: 5px; font-weight: 500; }
+
+    /* ─── SECTIONS ─── */
+    .section { padding: 44px 48px; }
+    .section.alt { background: var(--cream); }
+    .section + .section { border-top: 1px solid var(--border); }
+
+    .eyebrow {
+      font-size: 10px; font-weight: 700; letter-spacing: .14em;
+      text-transform: uppercase; color: var(--gold);
+      display: flex; align-items: center; gap: 10px; margin-bottom: 6px;
+    }
+    .eyebrow::after { content: ''; flex: 0 0 20px; height: 1px; background: var(--gold); opacity: .4; }
+
+    .sec-heading {
+      font-family: 'Playfair Display', serif;
+      font-size: 24px; font-weight: 700; color: var(--navy); margin-bottom: 4px;
+    }
+    .sec-sub { font-size: 13px; color: var(--muted); margin-bottom: 26px; }
+
+    /* ─── PRICING CARD ─── */
+    .pricing-wrap { display: flex; justify-content: center; }
+    .pricing-card {
+      background: var(--navy);
+      border-radius: 14px; padding: 36px 40px;
+      width: 100%; max-width: 540px;
+      position: relative; overflow: hidden;
+      box-shadow: 0 12px 40px rgba(14,30,53,.18);
+    }
+    .pricing-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, var(--gold), var(--gold-lt), var(--gold));
+    }
+    .pricing-card-orb { display: none; }
+    .pricing-inner { position: relative; z-index: 1; }
+
+    .pricing-tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(201,168,76,.12); border: 1px solid rgba(201,168,76,.28);
+      color: var(--gold-lt); font-size: 10px; font-weight: 700;
+      letter-spacing: .1em; text-transform: uppercase;
+      padding: 4px 11px; border-radius: 4px; margin-bottom: 18px;
+    }
+    .pricing-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 21px; color: white; margin-bottom: 3px;
+    }
+    .pricing-for { font-size: 12px; color: rgba(255,255,255,.42); margin-bottom: 22px; }
+
+    .pricing-price-row { display: flex; align-items: flex-end; gap: 14px; margin-bottom: 5px; }
+    .pricing-price {
+      font-family: 'Playfair Display', serif;
+      font-size: 52px; font-weight: 800; color: var(--gold); line-height: 1;
+      -webkit-text-fill-color: var(--gold); filter: none;
+    }
+    .pricing-price sup { font-size: 20px; vertical-align: top; margin-top: 9px; }
+    .pricing-free-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: rgba(201,168,76,.12); border: 1px solid rgba(201,168,76,.22);
+      color: var(--gold-lt); padding: 5px 11px; border-radius: 6px;
+      font-size: 11px; font-weight: 600; align-self: flex-end; margin-bottom: 4px;
+    }
+    .pricing-note { font-size: 11px; color: rgba(255,255,255,.32); margin-bottom: 24px; }
+
+    .pricing-divider { height: 1px; background: rgba(255,255,255,.07); margin: 18px 0; }
+
+    .pricing-features {
+      list-style: none;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin-bottom: 26px;
+    }
+    .pricing-features li {
+      font-size: 12.5px; color: rgba(255,255,255,.72);
+      padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.05);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .pricing-features li:nth-last-child(-n+2) { border-bottom: none; }
+    .pcheck {
+      color: var(--gold); font-size: 13px; flex-shrink: 0;
+      width: auto; height: auto; border-radius: 0;
+      background: none; border: none;
+      display: inline; justify-content: unset; align-items: unset;
+    }
+
+    .pricing-cta {
+      display: block; text-align: center;
+      background: linear-gradient(135deg, var(--gold), var(--gold-lt));
+      color: var(--navy); padding: 14px;
+      border-radius: 8px; font-size: 14px; font-weight: 800;
+      text-decoration: none; letter-spacing: .02em;
+      box-shadow: none;
+    }
+
+    /* ─── TABLE CARD ─── */
+    .table-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(14,30,53,.06);
+    }
+
+    .bmr-table { width: 100%; border-collapse: collapse; }
+    .bmr-table th {
+      text-align: left; font-size: 10px; font-weight: 700;
+      letter-spacing: .1em; text-transform: uppercase;
+      color: var(--muted); padding: 10px 14px;
+      background: #EEE8DE; border-bottom: 2px solid var(--border);
+    }
+    .bmr-table td {
+      padding: 14px 14px; border-bottom: 1px solid var(--border);
+      font-size: 13px; vertical-align: middle;
+    }
+    .bmr-table tr:last-child td { border-bottom: none; }
+    .bmr-table tbody tr:hover td { background: #FDFAF4; }
+    .td-service { font-weight: 600; color: var(--navy); }
+    .td-note { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+    .td-amt { font-weight: 700; color: var(--navy); white-space: nowrap; font-size: 14px; }
+
+    .tag {
+      display: inline-block; padding: 3px 9px;
+      border-radius: 4px; font-size: 10px; font-weight: 700; letter-spacing: .04em;
+    }
+    .tag-monthly  { background: var(--teal-lt);  color: var(--teal); }
+    .tag-annual   { background: #EAE6F5; color: #5B21B6; }
+    .tag-optional { background: var(--cream); color: var(--muted); border: 1px solid var(--border); }
+    .tag-free     { background: var(--green-lt); color: var(--green); }
+    .amt-free     { color: var(--green); font-weight: 800; font-size: 14px; }
+    .amt-custom   { color: var(--muted); font-weight: 500; }
+
+    /* ─── CUSTOM NOTICE ─── */
+    .custom-notice {
+      display: flex; align-items: flex-start; gap: 16px;
+      background: var(--gold-pale);
+      border: 1px solid #E2D4A8;
+      border-left: 4px solid var(--gold);
+      border-radius: 8px; padding: 18px 20px;
+      margin-bottom: 22px;
+      box-shadow: none;
+    }
+    .custom-notice-icon { font-size: 22px; flex-shrink: 0; margin-top: 1px; }
+    .custom-notice-title { font-size: 14px; font-weight: 700; color: var(--navy); margin-bottom: 5px; }
+    .custom-notice-text { font-size: 12.5px; color: var(--muted); line-height: 1.75; }
+
+    /* ─── WHY GRID ─── */
+    .why-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .why-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 8px; padding: 20px;
+      position: relative; overflow: hidden;
+      box-shadow: none;
+      transition: none;
+      border-top: none; border-image: none;
+    }
+    .why-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: var(--gold);
+    }
+    .why-card:hover { transform: none; box-shadow: none; }
+    .why-icon { font-size: 20px; margin-bottom: 10px; }
+    .why-title { font-size: 13px; font-weight: 700; color: var(--navy); margin-bottom: 7px; }
+    .why-text { font-size: 12px; color: var(--muted); line-height: 1.75; }
+
+    /* ─── COMPARE TABLE ─── */
+    .compare-table { width: 100%; border-collapse: collapse; }
+    .compare-table th {
+      padding: 10px 13px; font-size: 10.5px; font-weight: 700;
+      background: #EEE8DE; border-bottom: 2px solid var(--border);
+      text-align: center; color: var(--muted);
+      letter-spacing: .06em; text-transform: uppercase;
+    }
+    .compare-table th:first-child { text-align: left; }
+    .compare-table th.us-hd { background: var(--navy); color: var(--gold); border-bottom-color: var(--gold); }
+    .compare-table td {
+      padding: 12px 13px; border-bottom: 1px solid var(--border);
+      font-size: 12.5px; text-align: center; color: var(--muted);
+    }
+    .compare-table td:first-child { text-align: left; font-weight: 500; color: var(--ink); }
+    .compare-table tr:last-child td { border-bottom: none; }
+    .compare-table tbody tr:hover td { background: #FDFAF4; }
+    .c-yes { color: var(--green); font-weight: 700; }
+    .c-no  { color: #C9C0C0; }
+    .c-us  { background: #F3EDD8; font-weight: 700; color: var(--navy); }
+
+    /* ─── CTA STRIP ─── */
+    .cta-strip {
+      background: var(--navy);
+      padding: 36px 48px;
+      display: flex; align-items: center; justify-content: space-between; gap: 24px;
+      border-top: 2px solid rgba(201,168,76,.2);
+      position: relative; overflow: hidden;
+    }
+    .cta-strip::before { display: none; }
+    .cta-content { position: relative; z-index: 1; }
+    .cta-heading {
+      font-family: 'Playfair Display', serif;
+      font-size: 21px; color: white; margin-bottom: 5px;
+    }
+    .cta-sub { font-size: 12.5px; color: rgba(255,255,255,.48); max-width: 420px; }
+    .cta-btn {
+      background: linear-gradient(135deg, var(--gold), var(--gold-lt));
+      color: var(--navy); padding: 13px 26px;
+      border-radius: 8px; font-size: 13px; font-weight: 800;
+      white-space: nowrap; text-decoration: none; flex-shrink: 0;
+      box-shadow: 0 4px 16px rgba(201,168,76,.3); z-index: 1; position: relative;
+    }
+
+    /* ─── FOOTER ─── */
+    .footer {
+      background: #080F1C;
+      padding: 18px 48px;
+      display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;
+    }
+    .footer-contact { text-align: center; }
+    .footer-contact-label {
+      font-size: 9px; font-weight: 700;
+      letter-spacing: .14em; text-transform: uppercase;
+      color: rgba(255,255,255,.35); margin-bottom: 3px;
+    }
+    .footer-contact-num {
+      font-size: 15px; font-weight: 700;
+      color: var(--gold-lt); letter-spacing: .04em;
+    }
+    .footer-brand {
+      font-family: 'Playfair Display', serif;
+      font-size: 14px; color: var(--gold); font-weight: 700;
+    }
+    .footer-note { font-size: 11px; color: rgba(255,255,255,.28); text-align: right; line-height: 1.7; }
+
+    /* ─── PRINT ─── */
+    @media print {
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      body { background: white; }
+      .page { margin: 0; box-shadow: none; max-width: 100%; }
+      .section, .pricing-card, .why-card, .hero, .stat-bar, .cta-strip, .footer { break-inside: avoid; page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+<button class="export-btn" id="exportBtn" onclick="exportPDF()">⬇ Save as PDF</button>
+
+<div class="page" id="flyer">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-top-bar">
+      <div class="hero-brand">BookMyRoom &nbsp;+&nbsp; ERPNext</div>
+      <div class="hero-region">Hotel ERP Solution &nbsp;·&nbsp; India</div>
+    </div>
+
+    <div class="hero-inner">
+      <div class="hero-left">
+        <div class="hero-badge">Built for Indian Hotels &amp; Hospitality</div>
+        <h1>One ERP.<br><em>Everything your<br>hotel needs.</em></h1>
+        <p class="hero-sub">Manage your entire hotel from one platform. Accounts, front desk, housekeeping and billing all work together. No juggling multiple systems and no hidden fees.</p>
+        <div class="hero-pills">
+          <div class="pill"><div class="pill-dot"></div>GST &amp; e-Invoice Ready</div>
+          <div class="pill"><div class="pill-dot"></div>Cloud Hosted on India Data Centre</div>
+          <div class="pill"><div class="pill-dot"></div>Open Source. No Vendor Lock-in.</div>
+          <div class="pill"><div class="pill-dot"></div>One-Time Setup. You Own It.</div>
+        </div>
+      </div>
+
+      <div class="hero-right">
+        <div class="free-card">
+          <div class="free-card-eyebrow">Included Free. No Extra Charge.</div>
+          <div class="free-card-title">BookMyRoom Hotel PMS</div>
+          <div class="free-card-subtitle">A full-featured Property Management System, built in.</div>
+          <div class="free-chips">
+            <span class="free-chip">Reservations</span>
+            <span class="free-chip">Front Desk Dashboard</span>
+            <span class="free-chip">Guest Folio &amp; Billing</span>
+            <span class="free-chip">Housekeeping Board</span>
+            <span class="free-chip">Rate &amp; Meal Plans</span>
+            <span class="free-chip">Gantt Calendar</span>
+            <span class="free-chip">GST Invoicing</span>
+          </div>
+          <div class="free-bottom">
+            <div class="free-price-was">₹39,999 elsewhere</div>
+            <div class="free-price-now">FREE</div>
+            <div class="free-price-note">Included in all plans</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STAT BAR -->
+  <div class="stat-bar">
+    <div class="stat-cell">
+      <div class="stat-num">13+</div>
+      <div class="stat-lbl">Modules Included</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-num">₹0</div>
+      <div class="stat-lbl">Per-User Licence Fee</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-num">100%</div>
+      <div class="stat-lbl">GST Compliant</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-num">1</div>
+      <div class="stat-lbl">Platform for Everything</div>
+    </div>
+  </div>
+
+  <!-- PRICING -->
+  <div class="section">
+    <div class="eyebrow">Pricing</div>
+    <div class="sec-heading">One Package. Everything Included.</div>
+    <div class="sec-sub">One-time setup cost. No surprises. No per-user fees. BookMyRoom Hotel PMS bundled free.</div>
+
+    <div class="pricing-wrap">
+      <div class="pricing-card">
+        <div class="pricing-card-orb"></div>
+        <div class="pricing-inner">
+          <div class="pricing-tag">✦ Complete Implementation Package</div>
+          <div class="pricing-name">Full ERPNext + Hotel PMS</div>
+          <div class="pricing-for">Any Hotel &nbsp;·&nbsp; Any Size &nbsp;·&nbsp; Unlimited Users</div>
+          <div class="pricing-price-row">
+            <div class="pricing-price"><sup>₹</sup>99,999</div>
+            <div class="pricing-free-badge">🎁 BookMyRoom FREE</div>
+          </div>
+          <div class="pricing-note">One-time setup fee &nbsp;·&nbsp; No recurring licence cost</div>
+          <div class="pricing-divider"></div>
+          <ul class="pricing-features">
+            <li><span class="pcheck">✓</span>Full ERPNext Core Modules</li>
+            <li><span class="pcheck">✓</span>Accounts &amp; Finance</li>
+            <li><span class="pcheck">✓</span>Purchase &amp; Inventory</li>
+            <li><span class="pcheck">✓</span>F&amp;B Store Management</li>
+            <li><span class="pcheck">✓</span>GST + TDS + e-Invoice</li>
+            <li><span class="pcheck">✓</span>Opening Balances Migration</li>
+            <li><span class="pcheck">✓</span>4-Day Role-wise Training</li>
+            <li><span class="pcheck">✓</span>30-Day Hypercare Support</li>
+          </ul>
+          <a class="pricing-cta" href="#">Get Started Today</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HOSTING & MAINTENANCE -->
+  <div class="section alt">
+    <div class="eyebrow">Recurring Costs</div>
+    <div class="sec-heading">Hosting &amp; Maintenance</div>
+    <div class="sec-sub">Predictable yearly costs. No per-user fees. Cancel anytime after year one.</div>
+    <div class="table-card">
+      <table class="bmr-table">
+        <thead>
+          <tr>
+            <th style="width:48%">Service</th>
+            <th style="width:16%">Billing</th>
+            <th>Cost</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <div class="td-service">Cloud Hosting</div>
+              <div class="td-note">Managed VPS · Daily backups · SSL · 99.5% uptime SLA · 4 vCPU, 8 GB RAM</div>
+            </td>
+            <td><span class="tag tag-monthly">Monthly</span></td>
+            <td class="td-amt">₹3,499 / mo</td>
+          </tr>
+          <tr>
+            <td>
+              <div class="td-service">AMC: Maintenance &amp; Upgrades</div>
+              <div class="td-note">ERPNext version upgrades, security patches, bug fixes + 8 support hrs/mo</div>
+            </td>
+            <td><span class="tag tag-annual">Annual</span></td>
+            <td class="td-amt">₹18,999 / yr</td>
+          </tr>
+          <tr>
+            <td>
+              <div class="td-service">Email Notifications</div>
+              <div class="td-note">Booking confirmations, check-in reminders, folio statements</div>
+            </td>
+            <td><span class="tag tag-free">Included</span></td>
+            <td class="amt-free">FREE</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- CUSTOMISATIONS & INTEGRATIONS -->
+  <div class="section">
+    <div class="eyebrow">Additional Services</div>
+    <div class="sec-heading">Customisations &amp; Integrations</div>
+    <div class="sec-sub">The setup price covers standard ERPNext and Hotel PMS features only. Anything beyond the standard scope is scoped, quoted and billed separately.</div>
+    <div class="custom-notice">
+      <div class="custom-notice-icon">💡</div>
+      <div>
+        <div class="custom-notice-title">Billed on Time &amp; Effort Basis</div>
+        <div class="custom-notice-text">If your hotel needs changes to standard screens, custom reports, special workflows or connections to third-party tools, our team will assess the requirement and share a separate quote. There are no surprises and no hidden charges.</div>
+      </div>
+    </div>
+    <div class="table-card">
+      <table class="bmr-table">
+        <thead>
+          <tr>
+            <th style="width:48%">Service</th>
+            <th style="width:16%">Billing</th>
+            <th>Cost</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <div class="td-service">SMS Notifications</div>
+              <div class="td-note">Booking alerts and check-in reminders via SMS</div>
+            </td>
+            <td><span class="tag tag-optional">Optional</span></td>
+            <td class="amt-custom">Custom quote</td>
+          </tr>
+          <tr>
+            <td>
+              <div class="td-service">OTA Channel Integration</div>
+              <div class="td-note">Booking.com, Agoda, MakeMyTrip with live availability and reservation sync</div>
+            </td>
+            <td><span class="tag tag-optional">Optional</span></td>
+            <td class="amt-custom">Custom quote</td>
+          </tr>
+          <tr>
+            <td>
+              <div class="td-service">Custom Development</div>
+              <div class="td-note">Custom screens, reports, workflows or any feature not in the standard scope</div>
+            </td>
+            <td><span class="tag tag-optional">Optional</span></td>
+            <td class="amt-custom">Time &amp; effort</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- WHY US -->
+  <div class="section alt">
+    <div class="eyebrow">Why Choose Us</div>
+    <div class="sec-heading">What Makes Us Different</div>
+    <div class="sec-sub">Most hotel software charges you for everything. We don't.</div>
+    <div class="why-grid">
+      <div class="why-card">
+        <div class="why-icon">🔓</div>
+        <div class="why-title">You Own the Software</div>
+        <div class="why-text">ERPNext is fully open source. You pay once for setup and the software is yours to keep. No per-user fees, no lock-in and no surprises down the road.</div>
+      </div>
+      <div class="why-card">
+        <div class="why-icon">🏨</div>
+        <div class="why-title">Hotel PMS Included Free</div>
+        <div class="why-text">BookMyRoom is built specifically for hotels. Reservations, guest folios, housekeeping and front desk all work together from day one, without any extra configuration.</div>
+      </div>
+      <div class="why-card">
+        <div class="why-icon">🧾</div>
+        <div class="why-title">100% GST Compliant</div>
+        <div class="why-text">GST is applied automatically based on your room tariff as per Indian regulations. e-Invoice, TDS and SAC codes are all set up for you during implementation.</div>
+      </div>
+      <div class="why-card">
+        <div class="why-icon">📊</div>
+        <div class="why-title">Real Business Insights</div>
+        <div class="why-text">Get the reports that matter to your business. Arrival registers, revenue trends and P&amp;L statements are all ready from day one so you always know where your hotel stands.</div>
+      </div>
+      <div class="why-card">
+        <div class="why-icon">☁️</div>
+        <div class="why-title">Fully Managed Cloud</div>
+        <div class="why-text">We manage the server, backups, SSL and software updates so you never have to worry about the technical side. You focus on your guests and we take care of the rest.</div>
+      </div>
+      <div class="why-card">
+        <div class="why-icon">🤝</div>
+        <div class="why-title">Dedicated Implementation</div>
+        <div class="why-text">Our team handles the complete setup, data migration and staff training on-site. From day one you will have one dedicated person guiding you through the entire process.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPARE -->
+  <div class="section">
+    <div class="eyebrow">How We Compare</div>
+    <div class="sec-heading">Us vs. The Alternatives</div>
+    <div class="sec-sub">See what you would pay for the same features elsewhere.</div>
+    <div class="table-card">
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th class="us-hd">Our Solution</th>
+            <th>Generic ERP</th>
+            <th>Standalone PMS</th>
+            <th>SaaS Hotel Tools</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Hotel PMS (Reservations, Folio, Housekeeping)</td>
+            <td class="c-yes c-us">✓ Free</td>
+            <td class="c-no">Add-on / Extra</td>
+            <td class="c-yes">✓ Yes</td>
+            <td class="c-yes">✓ Yes</td>
+          </tr>
+          <tr>
+            <td>Full Accounting (P&amp;L, Balance Sheet)</td>
+            <td class="c-yes c-us">✓ Included</td>
+            <td class="c-yes">✓ Yes</td>
+            <td class="c-no">✗ No</td>
+            <td class="c-no">✗ No</td>
+          </tr>
+          <tr>
+            <td>Indian GST / e-Invoice</td>
+            <td class="c-yes c-us">✓ Built-in</td>
+            <td style="color:rgba(255,255,255,0.35)">Varies</td>
+            <td class="c-no">✗ No</td>
+            <td style="color:rgba(255,255,255,0.35)">Varies</td>
+          </tr>
+          <tr>
+            <td>Per-User Licence Fee</td>
+            <td class="c-yes c-us">₹0 / user</td>
+            <td style="color:rgba(255,255,255,0.35)">₹500–2,000/user/mo</td>
+            <td style="color:rgba(255,255,255,0.35)">₹300–1,500/user/mo</td>
+            <td style="color:rgba(255,255,255,0.35)">₹800–3,000/user/mo</td>
+          </tr>
+          <tr>
+            <td>You Own the Software</td>
+            <td class="c-yes c-us">✓ Yes</td>
+            <td class="c-no">✗ SaaS only</td>
+            <td class="c-no">✗ SaaS only</td>
+            <td class="c-no">✗ SaaS only</td>
+          </tr>
+          <tr>
+            <td>Setup &amp; Go-Live Support</td>
+            <td class="c-yes c-us">✓ Included</td>
+            <td style="color:rgba(255,255,255,0.35)">Paid extra</td>
+            <td style="color:rgba(255,255,255,0.35)">Paid extra</td>
+            <td class="c-no">Self-serve</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <div class="cta-strip">
+    <div class="cta-content">
+      <div class="cta-heading">Ready to see it in action?</div>
+      <div class="cta-sub">We onboard a limited number of properties each month to ensure quality. Book your free demo before slots fill up.</div>
+    </div>
+    <a class="cta-btn" href="#">Book a Free Demo</a>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div class="footer-brand">BookMyRoom + ERPNext</div>
+    <div class="footer-contact">
+      <div class="footer-contact-label">Call Us</div>
+      <div class="footer-contact-num">📞 9353626168</div>
+    </div>
+    <div class="footer-note">
+      All prices exclusive of 18% GST &nbsp;·&nbsp; Annual commitment required &nbsp;·&nbsp; Custom pricing for chains with 3+ properties<br>
+      Prices subject to change without notice
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+  async function exportPDF() {
+    const btn = document.getElementById('exportBtn');
+    btn.innerHTML = '⏳ Generating...';
+    btn.classList.add('loading');
+    try {
+      const element = document.getElementById('flyer');
+      const canvas = await html2canvas(element, {
+        scale: 2, useCORS: true, logging: false,
+        scrollX: 0, scrollY: 0,
+        width: element.offsetWidth, height: element.offsetHeight,
+        windowWidth: element.offsetWidth, windowHeight: element.offsetHeight
+      });
+      const imgData = canvas.toDataURL('image/jpeg', 0.98);
+      const pdfWidth  = 210;
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [pdfWidth, pdfHeight] });
+      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save('BookMyRoom-Pricing.pdf');
+    } catch(e) { alert('Export failed: ' + e.message); }
+    btn.innerHTML = '⬇ Save as PDF';
+    btn.classList.remove('loading');
+  }
+</script>
+</body>
+</html>

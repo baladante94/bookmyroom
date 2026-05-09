@@ -68,6 +68,7 @@ fixtures = [
 	{"dt": "Custom HTML Block", "filters": [["name", "=", "BMR Room Status Grid"]]},
 	{"dt": "Number Card", "filters": [["name", "like", "BMR %"]]},
 	{"dt": "Dashboard Chart", "filters": [["name", "like", "BMR %"]]},
+	{"dt": "Print Format", "filters": [["name", "=", "BMR Hotel Quotation"]]},
 ]
 
 # Uninstallation
